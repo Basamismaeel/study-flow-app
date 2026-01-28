@@ -1,16 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CreatePlanDialog } from '@/components/CreatePlanDialog';
+import { EditPlanTasksDialog } from '@/components/EditPlanTasksDialog';
 import { PlanCard } from '@/components/PlanCard';
 import { Plus } from 'lucide-react';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
-import type { Plan } from '@/types';
+import { useUserLocalStorage } from '@/hooks/useUserLocalStorage';
+import type { Plan, PlannerTask } from '@/types';
 
 export function PlannerPage() {
-  const [plans, setPlans] = useLocalStorage<Plan[]>('study-flow-plans', []);
+  const [plans, setPlans] = useUserLocalStorage<Plan[]>('study-flow-plans', []);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editTasksPlanId, setEditTasksPlanId] = useState<string | null>(null);
   const [activePlanId, setActivePlanId] = useState<string | null>(plans[0]?.id ?? null);
+
+  const editTasksPlan = editTasksPlanId ? plans.find((p) => p.id === editTasksPlanId) ?? null : null;
 
   const handleAddPlan = (planData: Omit<Plan, 'id'>) => {
     const newPlan: Plan = {
@@ -32,6 +36,66 @@ export function PlannerPage() {
           ),
         };
       })
+    );
+  };
+
+  const handleAddTask = (planId: string, name: string) => {
+    const task: PlannerTask = {
+      id: crypto.randomUUID(),
+      name: name.trim(),
+      completed: false,
+    };
+    setPlans((prev) =>
+      prev.map((p) =>
+        p.id === planId ? { ...p, tasks: [...p.tasks, task] } : p
+      )
+    );
+  };
+
+  const handleUpdateTask = (planId: string, taskId: string, name: string) => {
+    setPlans((prev) =>
+      prev.map((p) => {
+        if (p.id !== planId) return p;
+        return {
+          ...p,
+          tasks: p.tasks.map((t) =>
+            t.id === taskId ? { ...t, name: name.trim() } : t
+          ),
+        };
+      })
+    );
+  };
+
+  const handleDeleteTask = (planId: string, taskId: string) => {
+    setPlans((prev) =>
+      prev.map((p) => {
+        if (p.id !== planId) return p;
+        return { ...p, tasks: p.tasks.filter((t) => t.id !== taskId) };
+      })
+    );
+  };
+
+  const handleReorderTasks = (planId: string, tasks: PlannerTask[]) => {
+    setPlans((prev) =>
+      prev.map((p) => (p.id === planId ? { ...p, tasks } : p))
+    );
+  };
+
+
+  const handleAddTasks = (planId: string, names: string[]) => {
+    const newTasks: PlannerTask[] = names
+      .map((name) => name.trim())
+      .filter(Boolean)
+      .map((name) => ({
+        id: crypto.randomUUID(),
+        name,
+        completed: false,
+      }));
+    if (newTasks.length === 0) return;
+    setPlans((prev) =>
+      prev.map((p) =>
+        p.id === planId ? { ...p, tasks: [...p.tasks, ...newTasks] } : p
+      )
     );
   };
 
@@ -77,11 +141,26 @@ export function PlannerPage() {
           </TabsList>
           {plans.map((plan) => (
             <TabsContent key={plan.id} value={plan.id} className="mt-6">
-              <PlanCard plan={plan} onToggleTask={handleToggleTask} />
+              <PlanCard
+                plan={plan}
+                onToggleTask={handleToggleTask}
+                onEditTaskList={(planId) => setEditTasksPlanId(planId)}
+              />
             </TabsContent>
           ))}
         </Tabs>
       )}
+
+      <EditPlanTasksDialog
+        open={!!editTasksPlan}
+        onOpenChange={(open) => !open && setEditTasksPlanId(null)}
+        plan={editTasksPlan}
+        onAddTask={handleAddTask}
+        onAddTasks={handleAddTasks}
+        onUpdateTask={handleUpdateTask}
+        onDeleteTask={handleDeleteTask}
+        onReorderTasks={handleReorderTasks}
+      />
 
       <CreatePlanDialog
         open={createDialogOpen}

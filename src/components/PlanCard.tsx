@@ -1,4 +1,5 @@
 import { Checkbox } from '@/components/ui/checkbox';
+import { Button } from '@/components/ui/button';
 import { ProgressBar } from '@/components/ProgressBar';
 import {
   getCurrentDay,
@@ -7,13 +8,15 @@ import {
 } from '@/lib/plannerLogic';
 import type { Plan } from '@/types';
 import { cn } from '@/lib/utils';
+import { ListPlus } from 'lucide-react';
 
 interface PlanCardProps {
   plan: Plan;
   onToggleTask: (planId: string, taskId: string) => void;
+  onEditTaskList?: (planId: string) => void;
 }
 
-export function PlanCard({ plan, onToggleTask }: PlanCardProps) {
+export function PlanCard({ plan, onToggleTask, onEditTaskList }: PlanCardProps) {
   const progress = getPlanProgress(plan);
   const currentDay = getCurrentDay(plan);
   const todayTasks = getTasksForDay(plan, currentDay);
@@ -21,6 +24,21 @@ export function PlanCard({ plan, onToggleTask }: PlanCardProps) {
 
   return (
     <div className="space-y-6">
+      {/* Edit task list */}
+      {onEditTaskList && (
+        <div className="flex justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onEditTaskList?.(plan.id)}
+            className="gap-2"
+          >
+            <ListPlus className="w-4 h-4" />
+            Edit task list
+          </Button>
+        </div>
+      )}
+
       {/* Progress */}
       <div className="glass-card p-6">
         <h3 className="text-sm font-medium text-muted-foreground mb-2">Progress</h3>

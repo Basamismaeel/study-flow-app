@@ -15,7 +15,15 @@ export function SystemCard({ system, compact = false, onClick }: SystemCardProps
   const qbankPercent = system.qbank.total > 0 
     ? Math.round((system.qbank.completed / system.qbank.total) * 100) 
     : 0;
-  const overallPercent = Math.round((bootcampPercent + qbankPercent) / 2);
+  
+  // Calculate overall percent: average of enabled fields only
+  const enabledFields = [
+    system.bootcamp.total > 0 ? bootcampPercent : null,
+    system.qbank.total > 0 ? qbankPercent : null
+  ].filter((p): p is number => p !== null);
+  const overallPercent = enabledFields.length > 0 
+    ? Math.round(enabledFields.reduce((acc, p) => acc + p, 0) / enabledFields.length)
+    : 0;
 
   const statusColors = {
     'not-started': 'bg-muted text-muted-foreground',
@@ -77,33 +85,37 @@ export function SystemCard({ system, compact = false, onClick }: SystemCardProps
       </div>
 
       <div className="space-y-4">
-        <div>
-          <div className="flex justify-between text-sm mb-1.5">
-            <span className="text-muted-foreground">Bootcamp Videos</span>
-            <span className="font-medium text-foreground">
-              {system.bootcamp.completed} / {system.bootcamp.total}
-            </span>
+        {system.bootcamp.total > 0 && (
+          <div>
+            <div className="flex justify-between text-sm mb-1.5">
+              <span className="text-muted-foreground">Bootcamp Videos</span>
+              <span className="font-medium text-foreground">
+                {system.bootcamp.completed} / {system.bootcamp.total}
+              </span>
+            </div>
+            <ProgressBar 
+              value={system.bootcamp.completed} 
+              max={system.bootcamp.total}
+              size="sm"
+            />
           </div>
-          <ProgressBar 
-            value={system.bootcamp.completed} 
-            max={system.bootcamp.total}
-            size="sm"
-          />
-        </div>
+        )}
 
-        <div>
-          <div className="flex justify-between text-sm mb-1.5">
-            <span className="text-muted-foreground">QBank Questions</span>
-            <span className="font-medium text-foreground">
-              {system.qbank.completed} / {system.qbank.total}
-            </span>
+        {system.qbank.total > 0 && (
+          <div>
+            <div className="flex justify-between text-sm mb-1.5">
+              <span className="text-muted-foreground">QBank Questions</span>
+              <span className="font-medium text-foreground">
+                {system.qbank.completed} / {system.qbank.total}
+              </span>
+            </div>
+            <ProgressBar 
+              value={system.qbank.completed} 
+              max={system.qbank.total}
+              size="sm"
+            />
           </div>
-          <ProgressBar 
-            value={system.qbank.completed} 
-            max={system.qbank.total}
-            size="sm"
-          />
-        </div>
+        )}
       </div>
     </div>
   );

@@ -4,6 +4,8 @@ import { SystemCard } from '@/components/SystemCard';
 import { AddSystemDialog } from '@/components/AddSystemDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Minus, Plus, Save, Trash2 } from 'lucide-react';
 
@@ -22,9 +24,15 @@ export function SystemsTracker({ systems, onUpdateSystem, onAddSystem, onDeleteS
     qbankCompleted: 0,
     qbankTotal: 0,
   });
+  const [includeBootcamp, setIncludeBootcamp] = useState(true);
+  const [includeQbank, setIncludeQbank] = useState(true);
 
   const openEditDialog = (system: MedicalSystem) => {
     setSelectedSystem(system);
+    const hasBootcamp = system.bootcamp.total > 0;
+    const hasQbank = system.qbank.total > 0;
+    setIncludeBootcamp(hasBootcamp);
+    setIncludeQbank(hasQbank);
     setEditValues({
       bootcampCompleted: system.bootcamp.completed,
       bootcampTotal: system.bootcamp.total,
@@ -35,14 +43,22 @@ export function SystemsTracker({ systems, onUpdateSystem, onAddSystem, onDeleteS
 
   const handleSave = () => {
     if (!selectedSystem) return;
+    if (!includeBootcamp && !includeQbank) {
+      alert('Please select at least one content type (Bootcamp Videos or QBank Questions)');
+      return;
+    }
 
-    const bootcampTotal = Math.max(0, editValues.bootcampTotal);
-    const qbankTotal = Math.max(0, editValues.qbankTotal);
-    const bootcampCompleted = Math.min(editValues.bootcampCompleted, bootcampTotal);
-    const qbankCompleted = Math.min(editValues.qbankCompleted, qbankTotal);
+    const bootcampTotal = includeBootcamp ? Math.max(0, editValues.bootcampTotal) : 0;
+    const qbankTotal = includeQbank ? Math.max(0, editValues.qbankTotal) : 0;
+    const bootcampCompleted = includeBootcamp ? Math.min(editValues.bootcampCompleted, bootcampTotal) : 0;
+    const qbankCompleted = includeQbank ? Math.min(editValues.qbankCompleted, qbankTotal) : 0;
 
+    // Calculate status based on enabled fields only
     let status: MedicalSystem['status'] = 'not-started';
-    if (bootcampCompleted === bootcampTotal && qbankCompleted === qbankTotal) {
+    const bootcampComplete = !includeBootcamp || (bootcampCompleted === bootcampTotal && bootcampTotal > 0);
+    const qbankComplete = !includeQbank || (qbankCompleted === qbankTotal && qbankTotal > 0);
+    
+    if (bootcampComplete && qbankComplete) {
       status = 'completed';
     } else if (bootcampCompleted > 0 || qbankCompleted > 0) {
       status = 'in-progress';
@@ -144,29 +160,104 @@ export function SystemsTracker({ systems, onUpdateSystem, onAddSystem, onDeleteS
           </DialogHeader>
 
           <div className="space-y-6 py-4">
+            {/* Content Type Selection */}
+            <div className="space-y-3">
+              <Label>Content Types</Label>
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="edit-include-bootcamp"
+                    checked={includeBootcamp}
+                    onCheckedChange={(checked) => {
+                      setIncludeBootcamp(!!checked);
+                      if (!checked) {
+                        setEditValues(prev => ({
+                          ...prev,
+                          bootcampTotal: 0,
+                          bootcampCompleted: 0,
+                        }));
+                      }
+                    }}
+                  />
+                  <Label htmlFor="edit-include-bootcamp" className="cursor-pointer">
+                    Include Bootcamp Videos
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="edit-include-qbank"
+                    checked={includeQbank}
+                    onCheckedChange={(checked) => {
+                      setIncludeQbank(!!checked);
+                      if (!checked) {
+                        setEditValues(prev => ({
+                          ...prev,
+                          qbankTotal: 0,
+                          qbankCompleted: 0,
+                        }));
+                      }
+                    }}
+                  />
+                  <Label htmlFor="edit-include-qbank" className="cursor-pointer">
+                    Include QBank Questions
+                  </Label>
+                </div>
+              </div>
+            </div>
+
             {/* Number of videos (bootcamp total) */}
-            <div>
-              <label className="text-sm font-medium text-foreground mb-3 block">
-                Number of videos (total)
-              </label>
+            {includeBootcamp && (
+              <div>
+                <label className="text-sm font-medium text-foreground mb-3 block">
+                  Number of videos (total)
+                </label>
               <Input
                 type="number"
                 value={editValues.bootcampTotal}
                 onChange={(e) => {
-                  const v = Math.max(0, parseInt(e.target.value, 10) || 0);
-                  setEditValues(prev => ({
-                    ...prev,
-                    bootcampTotal: v,
-                    bootcampCompleted: Math.min(prev.bootcampCompleted, v),
-                  }));
+                  const val = e.target.value;
+                  if (val === '') {
+                    return;
+                  }
+                  const num = parseInt(val, 10);
+                  if (!isNaN(num)) {
+                    const v = Math.max(0, num);
+                    setEditValues(prev => ({
+                      ...prev,
+                      bootcampTotal: v,
+                      bootcampCompleted: Math.min(prev.bootcampCompleted, v),
+                    }));
+                  }
+                }}
+                onBlur={(e) => {
+                  const val = e.target.value;
+                  if (val === '' || isNaN(parseInt(val, 10))) {
+                    const v = editValues.bootcampTotal || 0;
+                    setEditValues(prev => ({
+                      ...prev,
+                      bootcampTotal: v,
+                      bootcampCompleted: Math.min(prev.bootcampCompleted, v),
+                    }));
+                    e.target.value = v.toString();
+                  } else {
+                    const v = Math.max(0, parseInt(val, 10));
+                    setEditValues(prev => ({
+                      ...prev,
+                      bootcampTotal: v,
+                      bootcampCompleted: Math.min(prev.bootcampCompleted, v),
+                    }));
+                    e.target.value = v.toString();
+                  }
                 }}
                 className="text-center text-lg font-medium"
                 min={0}
               />
-            </div>
+              </div>
+            )}
 
             {/* Bootcamp Videos Completed */}
-            <div>
+            {includeBootcamp && (
+              <div>
               <label className="text-sm font-medium text-foreground mb-3 block">
                 Bootcamp videos completed
               </label>
@@ -182,10 +273,37 @@ export function SystemsTracker({ systems, onUpdateSystem, onAddSystem, onDeleteS
                 <Input
                   type="number"
                   value={editValues.bootcampCompleted}
-                  onChange={(e) => setEditValues(prev => ({
-                    ...prev,
-                    bootcampCompleted: Math.max(0, Math.min(editValues.bootcampTotal, parseInt(e.target.value, 10) || 0))
-                  }))}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === '') {
+                      return;
+                    }
+                    const num = parseInt(val, 10);
+                    if (!isNaN(num)) {
+                      setEditValues(prev => ({
+                        ...prev,
+                        bootcampCompleted: Math.max(0, Math.min(prev.bootcampTotal, num))
+                      }));
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const val = e.target.value;
+                    if (val === '' || isNaN(parseInt(val, 10))) {
+                      const v = editValues.bootcampCompleted || 0;
+                      setEditValues(prev => ({
+                        ...prev,
+                        bootcampCompleted: v
+                      }));
+                      e.target.value = v.toString();
+                    } else {
+                      const v = Math.max(0, Math.min(editValues.bootcampTotal, parseInt(val, 10)));
+                      setEditValues(prev => ({
+                        ...prev,
+                        bootcampCompleted: v
+                      }));
+                      e.target.value = v.toString();
+                    }
+                  }}
                   className="text-center text-lg font-medium"
                   min={0}
                   max={editValues.bootcampTotal}
@@ -202,10 +320,12 @@ export function SystemsTracker({ systems, onUpdateSystem, onAddSystem, onDeleteS
                   / {editValues.bootcampTotal}
                 </span>
               </div>
-            </div>
+              </div>
+            )}
 
             {/* Number of questions (qbank total) */}
-            <div>
+            {includeQbank && (
+              <div>
               <label className="text-sm font-medium text-foreground mb-3 block">
                 Number of questions (total)
               </label>
@@ -213,20 +333,49 @@ export function SystemsTracker({ systems, onUpdateSystem, onAddSystem, onDeleteS
                 type="number"
                 value={editValues.qbankTotal}
                 onChange={(e) => {
-                  const v = Math.max(0, parseInt(e.target.value, 10) || 0);
-                  setEditValues(prev => ({
-                    ...prev,
-                    qbankTotal: v,
-                    qbankCompleted: Math.min(prev.qbankCompleted, v),
-                  }));
+                  const val = e.target.value;
+                  if (val === '') {
+                    return;
+                  }
+                  const num = parseInt(val, 10);
+                  if (!isNaN(num)) {
+                    const v = Math.max(0, num);
+                    setEditValues(prev => ({
+                      ...prev,
+                      qbankTotal: v,
+                      qbankCompleted: Math.min(prev.qbankCompleted, v),
+                    }));
+                  }
+                }}
+                onBlur={(e) => {
+                  const val = e.target.value;
+                  if (val === '' || isNaN(parseInt(val, 10))) {
+                    const v = editValues.qbankTotal || 0;
+                    setEditValues(prev => ({
+                      ...prev,
+                      qbankTotal: v,
+                      qbankCompleted: Math.min(prev.qbankCompleted, v),
+                    }));
+                    e.target.value = v.toString();
+                  } else {
+                    const v = Math.max(0, parseInt(val, 10));
+                    setEditValues(prev => ({
+                      ...prev,
+                      qbankTotal: v,
+                      qbankCompleted: Math.min(prev.qbankCompleted, v),
+                    }));
+                    e.target.value = v.toString();
+                  }
                 }}
                 className="text-center text-lg font-medium"
                 min={0}
               />
-            </div>
+              </div>
+            )}
 
             {/* QBank Questions Completed */}
-            <div>
+            {includeQbank && (
+              <div>
               <label className="text-sm font-medium text-foreground mb-3 block">
                 QBank questions completed
               </label>
@@ -242,10 +391,37 @@ export function SystemsTracker({ systems, onUpdateSystem, onAddSystem, onDeleteS
                 <Input
                   type="number"
                   value={editValues.qbankCompleted}
-                  onChange={(e) => setEditValues(prev => ({
-                    ...prev,
-                    qbankCompleted: Math.max(0, Math.min(editValues.qbankTotal, parseInt(e.target.value, 10) || 0))
-                  }))}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === '') {
+                      return;
+                    }
+                    const num = parseInt(val, 10);
+                    if (!isNaN(num)) {
+                      setEditValues(prev => ({
+                        ...prev,
+                        qbankCompleted: Math.max(0, Math.min(prev.qbankTotal, num))
+                      }));
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const val = e.target.value;
+                    if (val === '' || isNaN(parseInt(val, 10))) {
+                      const v = editValues.qbankCompleted || 0;
+                      setEditValues(prev => ({
+                        ...prev,
+                        qbankCompleted: v
+                      }));
+                      e.target.value = v.toString();
+                    } else {
+                      const v = Math.max(0, Math.min(editValues.qbankTotal, parseInt(val, 10)));
+                      setEditValues(prev => ({
+                        ...prev,
+                        qbankCompleted: v
+                      }));
+                      e.target.value = v.toString();
+                    }
+                  }}
                   className="text-center text-lg font-medium"
                   min={0}
                   max={editValues.qbankTotal}
@@ -263,7 +439,8 @@ export function SystemsTracker({ systems, onUpdateSystem, onAddSystem, onDeleteS
                 </span>
               </div>
               <p className="text-xs text-muted-foreground mt-2">Use +/- buttons to adjust by 10</p>
-            </div>
+              </div>
+            )}
           </div>
 
           <div className="flex gap-2">

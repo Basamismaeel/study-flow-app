@@ -78,17 +78,59 @@ export function TimerPage() {
   };
 
   const handleInputChange = (field: 'hours' | 'minutes' | 'seconds', value: string) => {
-    const num = Math.max(0, parseInt(value) || 0);
-    switch (field) {
-      case 'hours':
-        setHours(Math.min(99, num));
-        break;
-      case 'minutes':
-        setMinutes(Math.min(59, num));
-        break;
-      case 'seconds':
-        setSeconds(Math.min(59, num));
-        break;
+    if (value === '') {
+      return; // Allow blank while typing
+    }
+    const num = parseInt(value, 10);
+    if (!isNaN(num)) {
+      switch (field) {
+        case 'hours':
+          setHours(Math.min(99, Math.max(0, num)));
+          break;
+        case 'minutes':
+          setMinutes(Math.min(59, Math.max(0, num)));
+          break;
+        case 'seconds':
+          setSeconds(Math.min(59, Math.max(0, num)));
+          break;
+      }
+    }
+  };
+
+  const handleInputBlur = (field: 'hours' | 'minutes' | 'seconds', e: React.FocusEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    if (val === '' || isNaN(parseInt(val, 10))) {
+      // Reset to current value if blank or invalid
+      switch (field) {
+        case 'hours':
+          e.target.value = hours.toString();
+          break;
+        case 'minutes':
+          e.target.value = minutes.toString();
+          break;
+        case 'seconds':
+          e.target.value = seconds.toString();
+          break;
+      }
+    } else {
+      const num = parseInt(val, 10);
+      switch (field) {
+        case 'hours':
+          const h = Math.min(99, Math.max(0, num));
+          setHours(h);
+          e.target.value = h.toString();
+          break;
+        case 'minutes':
+          const m = Math.min(59, Math.max(0, num));
+          setMinutes(m);
+          e.target.value = m.toString();
+          break;
+        case 'seconds':
+          const s = Math.min(59, Math.max(0, num));
+          setSeconds(s);
+          e.target.value = s.toString();
+          break;
+      }
     }
   };
 
@@ -192,7 +234,17 @@ export function TimerPage() {
                   type="number"
                   placeholder={quickUnit === 'minutes' ? 'e.g. 25' : 'e.g. 2'}
                   value={quickValue}
-                  onChange={(e) => setQuickValue(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setQuickValue(val);
+                  }}
+                  onBlur={(e) => {
+                    const val = e.target.value;
+                    if (val === '' || isNaN(parseInt(val, 10))) {
+                      setQuickValue('');
+                      e.target.value = '';
+                    }
+                  }}
                   onKeyDown={handleQuickValueKeyDown}
                   className="w-24 text-center font-medium"
                   min={0}
@@ -253,6 +305,7 @@ export function TimerPage() {
                     type="number"
                     value={hours}
                     onChange={(e) => handleInputChange('hours', e.target.value)}
+                    onBlur={(e) => handleInputBlur('hours', e)}
                     className="w-20 text-center text-lg font-medium"
                     min={0}
                     max={99}
@@ -265,6 +318,7 @@ export function TimerPage() {
                     type="number"
                     value={minutes}
                     onChange={(e) => handleInputChange('minutes', e.target.value)}
+                    onBlur={(e) => handleInputBlur('minutes', e)}
                     className="w-20 text-center text-lg font-medium"
                     min={0}
                     max={59}
@@ -277,6 +331,7 @@ export function TimerPage() {
                     type="number"
                     value={seconds}
                     onChange={(e) => handleInputChange('seconds', e.target.value)}
+                    onBlur={(e) => handleInputBlur('seconds', e)}
                     className="w-20 text-center text-lg font-medium"
                     min={0}
                     max={59}

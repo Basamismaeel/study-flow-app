@@ -5,14 +5,18 @@ import { SystemsTracker } from './SystemsTracker';
 import { DailyTasks } from './DailyTasks';
 import { TimerPage } from './TimerPage';
 import { PlannerPage } from './PlannerPage';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { LanguagesPage } from './LanguagesPage';
+import { GoalsPage } from './GoalsPage';
+import { NotebookPage } from './NotebookPage';
+import { LoginPage } from './LoginPage';
+import { useUserLocalStorage } from '@/hooks/useUserLocalStorage';
 import { initialSystems } from '@/data/initialSystems';
 import { MedicalSystem, DailyTask } from '@/types';
 
 const Index = () => {
-  const [systems, setSystems] = useLocalStorage<MedicalSystem[]>('usmle-systems', initialSystems);
-  const [tasks, setTasks] = useLocalStorage<DailyTask[]>('usmle-daily-tasks', []);
-  const [selectedNextSystemId, setSelectedNextSystemId] = useLocalStorage<string | null>('usmle-next-system', null);
+  const [systems, setSystems] = useUserLocalStorage<MedicalSystem[]>('usmle-systems', initialSystems);
+  const [tasks, setTasks] = useUserLocalStorage<DailyTask[]>('usmle-daily-tasks', []);
+  const [selectedNextSystemId, setSelectedNextSystemId] = useUserLocalStorage<string | null>('usmle-next-system', null);
 
   const handleUpdateSystem = (id: string, updates: Partial<MedicalSystem>) => {
     setSystems(prev => prev.map(system => 
@@ -97,6 +101,10 @@ const Index = () => {
         />
         <Route path="/timer" element={<TimerPage />} />
         <Route path="/planner" element={<PlannerPage />} />
+        <Route path="/languages" element={<LanguagesPage />} />
+        <Route path="/goals" element={<GoalsPage />} />
+        <Route path="/notebook" element={<NotebookPage />} />
+        <Route path="/login" element={<LoginPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Layout>

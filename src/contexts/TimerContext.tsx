@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useUserLocalStorage } from '@/hooks/useUserLocalStorage';
 
 interface TimerState {
   targetTime: number | null; // Unix timestamp when timer ends
@@ -26,7 +26,7 @@ interface TimerContextType {
 const TimerContext = createContext<TimerContextType | null>(null);
 
 export function TimerProvider({ children }: { children: ReactNode }) {
-  const [timerState, setTimerState] = useLocalStorage<TimerState>('study-timer', {
+  const [timerState, setTimerState] = useUserLocalStorage<TimerState>('study-timer', {
     targetTime: null,
     totalSeconds: 25 * 60,
     isRunning: false,

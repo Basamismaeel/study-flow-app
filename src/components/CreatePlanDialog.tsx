@@ -87,7 +87,27 @@ export function CreatePlanDialog({ open, onOpenChange, onAddPlan }: CreatePlanDi
                 type="number"
                 min={1}
                 value={totalDays}
-                onChange={(e) => setTotalDays(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === '') {
+                    return;
+                  }
+                  const num = parseInt(val, 10);
+                  if (!isNaN(num)) {
+                    setTotalDays(num);
+                  }
+                }}
+                onBlur={(e) => {
+                  const val = e.target.value;
+                  if (val === '' || isNaN(parseInt(val, 10))) {
+                    setTotalDays(1);
+                    e.target.value = '1';
+                  } else {
+                    const num = parseInt(val, 10);
+                    setTotalDays(Math.max(1, num));
+                    e.target.value = Math.max(1, num).toString();
+                  }
+                }}
                 className="mt-1.5"
               />
             </div>
@@ -98,7 +118,27 @@ export function CreatePlanDialog({ open, onOpenChange, onAddPlan }: CreatePlanDi
                 type="number"
                 min={1}
                 value={tasksPerDay}
-                onChange={(e) => setTasksPerDay(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === '') {
+                    return;
+                  }
+                  const num = parseInt(val, 10);
+                  if (!isNaN(num)) {
+                    setTasksPerDay(num);
+                  }
+                }}
+                onBlur={(e) => {
+                  const val = e.target.value;
+                  if (val === '' || isNaN(parseInt(val, 10))) {
+                    setTasksPerDay(1);
+                    e.target.value = '1';
+                  } else {
+                    const num = parseInt(val, 10);
+                    setTasksPerDay(Math.max(1, num));
+                    e.target.value = Math.max(1, num).toString();
+                  }
+                }}
                 className="mt-1.5"
               />
             </div>
