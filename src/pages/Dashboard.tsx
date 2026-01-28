@@ -1,16 +1,23 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, BookOpen, FileQuestion, Target } from 'lucide-react';
+import { ArrowRight, BookOpen, FileQuestion, Target, ChevronDown } from 'lucide-react';
 import { MedicalSystem } from '@/types';
 import { ProgressBar } from '@/components/ProgressBar';
-import { SystemCard } from '@/components/SystemCard';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface DashboardProps {
   systems: MedicalSystem[];
+  selectedNextSystemId: string | null;
+  onSelectNextSystem: (id: string) => void;
 }
 
-export function Dashboard({ systems }: DashboardProps) {
+export function Dashboard({ systems, selectedNextSystemId, onSelectNextSystem }: DashboardProps) {
   const stats = useMemo(() => {
     const totalBootcamp = systems.reduce((acc, s) => acc + s.bootcamp.total, 0);
     const completedBootcamp = systems.reduce((acc, s) => acc + s.bootcamp.completed, 0);
@@ -33,11 +40,13 @@ export function Dashboard({ systems }: DashboardProps) {
   }, [systems]);
 
   const nextSystem = useMemo(() => {
+    if (selectedNextSystemId) {
+      return systems.find(s => s.id === selectedNextSystemId);
+    }
     return systems.find(s => s.status !== 'completed') || systems[0];
-  }, [systems]);
+  }, [systems, selectedNextSystemId]);
 
-  const inProgressSystems = systems.filter(s => s.status === 'in-progress');
-  const notStartedSystems = systems.filter(s => s.status === 'not-started');
+  const incompleteSystems = systems.filter(s => s.status !== 'completed');
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -130,9 +139,36 @@ export function Dashboard({ systems }: DashboardProps) {
             </Link>
           </div>
           <div className="flex items-center gap-4 p-4 rounded-xl bg-accent/30 border border-primary/10">
-            <span className="text-4xl">{nextSystem.icon}</span>
-            <div className="flex-1">
-              <h3 className="font-medium text-foreground">{nextSystem.name}</h3>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+                  <span className="text-4xl">{nextSystem.icon}</span>
+                  <div className="text-left">
+                    <div className="flex items-center gap-1">
+                      <h3 className="font-medium text-foreground">{nextSystem.name}</h3>
+                      <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                    </div>
+                    <p className="text-sm text-muted-foreground">Click to change</p>
+                  </div>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-56">
+                {incompleteSystems.map(system => (
+                  <DropdownMenuItem
+                    key={system.id}
+                    onClick={() => onSelectNextSystem(system.id)}
+                    className="flex items-center gap-2"
+                  >
+                    <span>{system.icon}</span>
+                    <span>{system.name}</span>
+                    {system.id === nextSystem.id && (
+                      <span className="ml-auto text-xs text-primary">Current</span>
+                    )}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <div className="flex-1 text-right">
               <p className="text-sm text-muted-foreground">
                 {nextSystem.bootcamp.total - nextSystem.bootcamp.completed} videos • {' '}
                 {nextSystem.qbank.total - nextSystem.qbank.completed} questions remaining
@@ -144,40 +180,6 @@ export function Dashboard({ systems }: DashboardProps) {
           </div>
         </div>
       )}
-
-      {/* Systems Overview */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-medium text-foreground">Systems Overview</h2>
-          <Link to="/systems">
-            <Button variant="ghost" size="sm" className="text-primary">
-              See All <ArrowRight className="w-4 h-4 ml-1" />
-            </Button>
-          </Link>
-        </div>
-        
-        {inProgressSystems.length > 0 && (
-          <div className="mb-6">
-            <h3 className="text-sm font-medium text-muted-foreground mb-3">In Progress</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {inProgressSystems.slice(0, 3).map(system => (
-                <SystemCard key={system.id} system={system} compact />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {notStartedSystems.length > 0 && (
-          <div>
-            <h3 className="text-sm font-medium text-muted-foreground mb-3">Not Started</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {notStartedSystems.slice(0, 6).map(system => (
-                <SystemCard key={system.id} system={system} compact />
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
     </div>
   );
 }

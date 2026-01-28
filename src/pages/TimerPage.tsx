@@ -1,20 +1,28 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Play, Pause, RotateCcw, Plus, Minus } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Play, Pause, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-const PRESET_TIMES = [
-  { label: '25 min', minutes: 25 },
-  { label: '45 min', minutes: 45 },
-  { label: '60 min', minutes: 60 },
-];
+import { useTimer } from '@/contexts/TimerContext';
 
 export function TimerPage() {
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [timerMinutes, setTimerMinutes] = useState(25);
-  const [timeLeft, setTimeLeft] = useState(25 * 60);
-  const [isRunning, setIsRunning] = useState(false);
-  const [isTimerMode, setIsTimerMode] = useState(false);
+  const [hours, setHours] = useState(0);
+  const [minutes, setMinutes] = useState(25);
+  const [seconds, setSeconds] = useState(0);
+  
+  const { 
+    timeLeft, 
+    isRunning, 
+    isComplete, 
+    progress, 
+    startTimer, 
+    pauseTimer, 
+    resumeTimer, 
+    resetTimer 
+  } = useTimer();
+
+  const isTimerMode = timeLeft > 0 || isRunning || isComplete;
 
   // Update clock every second
   useEffect(() => {
@@ -24,29 +32,14 @@ export function TimerPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Timer countdown
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isRunning && timeLeft > 0) {
-      interval = setInterval(() => {
-        setTimeLeft(prev => prev - 1);
-      }, 1000);
-    } else if (timeLeft === 0 && isRunning) {
-      setIsRunning(false);
-      // Play notification sound or show alert
-      if (Notification.permission === 'granted') {
-        new Notification('Timer Complete!', {
-          body: 'Your focus session has ended.',
-        });
-      }
+  const formatTime = (totalSeconds: number) => {
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const s = totalSeconds % 60;
+    if (h > 0) {
+      return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
     }
-    return () => clearInterval(interval);
-  }, [isRunning, timeLeft]);
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
   const formatClock = (date: Date) => {
@@ -57,45 +50,49 @@ export function TimerPage() {
     });
   };
 
-  const handleStart = useCallback(() => {
-    if (!isTimerMode) {
-      setTimeLeft(timerMinutes * 60);
-      setIsTimerMode(true);
+  const handleStart = () => {
+    if (isTimerMode && !isRunning && !isComplete) {
+      resumeTimer();
+    } else {
+      startTimer(hours, minutes, seconds);
     }
-    setIsRunning(true);
-    
-    // Request notification permission
-    if (Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
-  }, [isTimerMode, timerMinutes]);
+  };
 
   const handlePause = () => {
-    setIsRunning(false);
+    pauseTimer();
   };
 
   const handleReset = () => {
-    setIsRunning(false);
-    setIsTimerMode(false);
-    setTimeLeft(timerMinutes * 60);
+    resetTimer();
   };
 
-  const adjustMinutes = (delta: number) => {
-    const newMinutes = Math.max(1, Math.min(120, timerMinutes + delta));
-    setTimerMinutes(newMinutes);
-    if (!isTimerMode) {
-      setTimeLeft(newMinutes * 60);
+  const handleInputChange = (field: 'hours' | 'minutes' | 'seconds', value: string) => {
+    const num = Math.max(0, parseInt(value) || 0);
+    switch (field) {
+      case 'hours':
+        setHours(Math.min(23, num));
+        break;
+      case 'minutes':
+        setMinutes(Math.min(59, num));
+        break;
+      case 'seconds':
+        setSeconds(Math.min(59, num));
+        break;
     }
   };
 
-  const selectPreset = (minutes: number) => {
-    setTimerMinutes(minutes);
-    if (!isTimerMode) {
-      setTimeLeft(minutes * 60);
-    }
+  const selectPreset = (h: number, m: number, s: number) => {
+    setHours(h);
+    setMinutes(m);
+    setSeconds(s);
   };
 
-  const progress = isTimerMode ? ((timerMinutes * 60 - timeLeft) / (timerMinutes * 60)) * 100 : 0;
+  const PRESETS = [
+    { label: '25 min', h: 0, m: 25, s: 0 },
+    { label: '45 min', h: 0, m: 45, s: 0 },
+    { label: '1 hour', h: 1, m: 0, s: 0 },
+    { label: '2 hours', h: 2, m: 0, s: 0 },
+  ];
 
   return (
     <div className="max-w-xl mx-auto space-y-12 animate-fade-in">
@@ -131,7 +128,10 @@ export function TimerPage() {
                 cx="112"
                 cy="112"
                 r="100"
-                className="fill-none stroke-primary transition-all duration-1000 ease-linear"
+                className={cn(
+                  "fill-none transition-all duration-1000 ease-linear",
+                  isComplete ? "stroke-destructive" : "stroke-primary"
+                )}
                 strokeWidth="8"
                 strokeLinecap="round"
                 strokeDasharray={2 * Math.PI * 100}
@@ -141,7 +141,7 @@ export function TimerPage() {
             <div className="absolute inset-0 flex items-center justify-center">
               <span className={cn(
                 'timer-display',
-                timeLeft === 0 && 'text-success'
+                isComplete && 'text-destructive'
               )}>
                 {formatTime(timeLeft)}
               </span>
@@ -151,36 +151,52 @@ export function TimerPage() {
           {/* Time Adjustment (only when not running) */}
           {!isTimerMode && (
             <div className="space-y-4 mb-6">
-              <div className="flex items-center justify-center gap-4">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => adjustMinutes(-5)}
-                  disabled={timerMinutes <= 5}
-                >
-                  <Minus className="h-4 w-4" />
-                </Button>
-                <span className="text-lg font-medium text-foreground w-24">
-                  {timerMinutes} min
-                </span>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => adjustMinutes(5)}
-                  disabled={timerMinutes >= 120}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
+              <div className="flex items-center justify-center gap-2">
+                <div className="text-center">
+                  <label className="text-xs text-muted-foreground block mb-1">Hours</label>
+                  <Input
+                    type="number"
+                    value={hours}
+                    onChange={(e) => handleInputChange('hours', e.target.value)}
+                    className="w-20 text-center text-lg font-medium"
+                    min={0}
+                    max={23}
+                  />
+                </div>
+                <span className="text-2xl text-muted-foreground mt-5">:</span>
+                <div className="text-center">
+                  <label className="text-xs text-muted-foreground block mb-1">Minutes</label>
+                  <Input
+                    type="number"
+                    value={minutes}
+                    onChange={(e) => handleInputChange('minutes', e.target.value)}
+                    className="w-20 text-center text-lg font-medium"
+                    min={0}
+                    max={59}
+                  />
+                </div>
+                <span className="text-2xl text-muted-foreground mt-5">:</span>
+                <div className="text-center">
+                  <label className="text-xs text-muted-foreground block mb-1">Seconds</label>
+                  <Input
+                    type="number"
+                    value={seconds}
+                    onChange={(e) => handleInputChange('seconds', e.target.value)}
+                    className="w-20 text-center text-lg font-medium"
+                    min={0}
+                    max={59}
+                  />
+                </div>
               </div>
 
               {/* Presets */}
-              <div className="flex justify-center gap-2">
-                {PRESET_TIMES.map((preset) => (
+              <div className="flex flex-wrap justify-center gap-2">
+                {PRESETS.map((preset) => (
                   <Button
-                    key={preset.minutes}
-                    variant={timerMinutes === preset.minutes ? 'default' : 'outline'}
+                    key={preset.label}
+                    variant={hours === preset.h && minutes === preset.m && seconds === preset.s ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => selectPreset(preset.minutes)}
+                    onClick={() => selectPreset(preset.h, preset.m, preset.s)}
                   >
                     {preset.label}
                   </Button>
@@ -192,9 +208,14 @@ export function TimerPage() {
           {/* Controls */}
           <div className="flex justify-center gap-4">
             {!isRunning ? (
-              <Button size="lg" onClick={handleStart} className="px-8">
+              <Button 
+                size="lg" 
+                onClick={handleStart} 
+                className="px-8"
+                disabled={!isTimerMode && hours === 0 && minutes === 0 && seconds === 0}
+              >
                 <Play className="w-5 h-5 mr-2" />
-                {isTimerMode ? 'Resume' : 'Start'}
+                {isTimerMode && !isComplete ? 'Resume' : 'Start'}
               </Button>
             ) : (
               <Button size="lg" variant="outline" onClick={handlePause} className="px-8">
@@ -202,7 +223,7 @@ export function TimerPage() {
                 Pause
               </Button>
             )}
-            {isTimerMode && (
+            {(isTimerMode || isComplete) && (
               <Button size="lg" variant="ghost" onClick={handleReset}>
                 <RotateCcw className="w-5 h-5" />
               </Button>
@@ -216,8 +237,8 @@ export function TimerPage() {
             Stay focused. You've got this! 💪
           </p>
         )}
-        {timeLeft === 0 && (
-          <p className="text-center text-sm text-success font-medium">
+        {isComplete && (
+          <p className="text-center text-sm text-destructive font-medium">
             Session complete! Great work! 🎉
           </p>
         )}

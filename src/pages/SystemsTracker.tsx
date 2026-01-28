@@ -1,17 +1,20 @@
 import { useState } from 'react';
 import { MedicalSystem } from '@/types';
 import { SystemCard } from '@/components/SystemCard';
+import { AddSystemDialog } from '@/components/AddSystemDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Minus, Plus, Save } from 'lucide-react';
+import { Minus, Plus, Save, Trash2 } from 'lucide-react';
 
 interface SystemsTrackerProps {
   systems: MedicalSystem[];
   onUpdateSystem: (id: string, updates: Partial<MedicalSystem>) => void;
+  onAddSystem: (system: Omit<MedicalSystem, 'id'>) => void;
+  onDeleteSystem: (id: string) => void;
 }
 
-export function SystemsTracker({ systems, onUpdateSystem }: SystemsTrackerProps) {
+export function SystemsTracker({ systems, onUpdateSystem, onAddSystem, onDeleteSystem }: SystemsTrackerProps) {
   const [selectedSystem, setSelectedSystem] = useState<MedicalSystem | null>(null);
   const [editValues, setEditValues] = useState({
     bootcampCompleted: 0,
@@ -48,6 +51,12 @@ export function SystemsTracker({ systems, onUpdateSystem }: SystemsTrackerProps)
     setSelectedSystem(null);
   };
 
+  const handleDelete = () => {
+    if (!selectedSystem) return;
+    onDeleteSystem(selectedSystem.id);
+    setSelectedSystem(null);
+  };
+
   const adjustValue = (field: 'bootcampCompleted' | 'qbankCompleted', delta: number) => {
     if (!selectedSystem) return;
     const max = field === 'bootcampCompleted' ? selectedSystem.bootcamp.total : selectedSystem.qbank.total;
@@ -63,9 +72,12 @@ export function SystemsTracker({ systems, onUpdateSystem }: SystemsTrackerProps)
 
   return (
     <div className="space-y-8 animate-fade-in">
-      <div>
-        <h1 className="text-3xl font-semibold text-foreground mb-2">Systems Tracker</h1>
-        <p className="text-muted-foreground">Track your progress by system</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-semibold text-foreground mb-2">Systems Tracker</h1>
+          <p className="text-muted-foreground">Track your progress by system</p>
+        </div>
+        <AddSystemDialog onAddSystem={onAddSystem} />
       </div>
 
       {completedSystems.length > 0 && (
@@ -207,10 +219,15 @@ export function SystemsTracker({ systems, onUpdateSystem }: SystemsTrackerProps)
             </div>
           </div>
 
-          <Button onClick={handleSave} className="w-full">
-            <Save className="w-4 h-4 mr-2" />
-            Save Progress
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={handleSave} className="flex-1">
+              <Save className="w-4 h-4 mr-2" />
+              Save Progress
+            </Button>
+            <Button variant="destructive" size="icon" onClick={handleDelete}>
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

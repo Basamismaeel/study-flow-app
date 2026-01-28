@@ -2,6 +2,8 @@ import { ReactNode } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { LayoutDashboard, ListTodo, Clock, BookOpen, Sun, Moon } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
+import { useTimer } from '@/contexts/TimerContext';
+import { TimerNotification } from '@/components/TimerNotification';
 import { cn } from '@/lib/utils';
 
 interface LayoutProps {
@@ -18,9 +20,19 @@ const navItems = [
 export function Layout({ children }: LayoutProps) {
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
+  const { timeLeft, isRunning } = useTimer();
+
+  const formatMiniTimer = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Timer Notification */}
+      <TimerNotification />
+
       {/* Top Navigation Bar */}
       <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-md border-b border-border/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -37,6 +49,7 @@ export function Layout({ children }: LayoutProps) {
             <nav className="flex items-center gap-1">
               {navItems.map((item) => {
                 const isActive = location.pathname === item.to;
+                const showTimer = item.to === '/timer' && isRunning && location.pathname !== '/timer';
                 return (
                   <NavLink
                     key={item.to}
@@ -50,6 +63,11 @@ export function Layout({ children }: LayoutProps) {
                   >
                     <item.icon className="w-4 h-4" />
                     <span className="hidden md:inline">{item.label}</span>
+                    {showTimer && (
+                      <span className="ml-1 px-2 py-0.5 text-xs font-mono bg-primary/20 text-primary rounded-full animate-pulse">
+                        {formatMiniTimer(timeLeft)}
+                      </span>
+                    )}
                   </NavLink>
                 );
               })}
