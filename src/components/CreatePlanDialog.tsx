@@ -75,7 +75,7 @@ export function CreatePlanDialog({ open, onOpenChange, onAddPlan }: CreatePlanDi
               id="plan-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Bootcamp Videos"
+              placeholder="e.g. Videos"
               className="mt-1.5"
             />
           </div>

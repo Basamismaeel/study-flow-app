@@ -37,7 +37,7 @@ export function AddSystemDialog({ onAddSystem }: AddSystemDialogProps) {
     e.preventDefault();
     if (!name.trim()) return;
     if (!includeBootcamp && !includeQbank) {
-      alert('Please select at least one content type (Bootcamp Videos or QBank Questions)');
+      alert('Please select at least one content type (Videos or QBank Questions)');
       return;
     }
 
@@ -121,7 +121,7 @@ export function AddSystemDialog({ onAddSystem }: AddSystemDialogProps) {
                     }}
                   />
                   <Label htmlFor="include-bootcamp" className="cursor-pointer">
-                    Include Bootcamp Videos
+                    Include Videos
                   </Label>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -147,7 +147,7 @@ export function AddSystemDialog({ onAddSystem }: AddSystemDialogProps) {
             <div className="grid grid-cols-2 gap-4">
               {includeBootcamp && (
                 <div className="space-y-2">
-                  <Label htmlFor="bootcamp">Bootcamp Videos Total</Label>
+                  <Label htmlFor="bootcamp">Videos Total</Label>
                   <Input
                     id="bootcamp"
                     type="number"

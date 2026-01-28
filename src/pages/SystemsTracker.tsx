@@ -44,7 +44,7 @@ export function SystemsTracker({ systems, onUpdateSystem, onAddSystem, onDeleteS
   const handleSave = () => {
     if (!selectedSystem) return;
     if (!includeBootcamp && !includeQbank) {
-      alert('Please select at least one content type (Bootcamp Videos or QBank Questions)');
+      alert('Please select at least one content type (Videos or QBank Questions)');
       return;
     }
 
@@ -180,7 +180,7 @@ export function SystemsTracker({ systems, onUpdateSystem, onAddSystem, onDeleteS
                     }}
                   />
                   <Label htmlFor="edit-include-bootcamp" className="cursor-pointer">
-                    Include Bootcamp Videos
+                    Include Videos
                   </Label>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -259,7 +259,7 @@ export function SystemsTracker({ systems, onUpdateSystem, onAddSystem, onDeleteS
             {includeBootcamp && (
               <div>
               <label className="text-sm font-medium text-foreground mb-3 block">
-                Bootcamp videos completed
+                Videos completed
               </label>
               <div className="flex items-center gap-3">
                 <Button

@@ -88,7 +88,7 @@ export function SystemCard({ system, compact = false, onClick }: SystemCardProps
         {system.bootcamp.total > 0 && (
           <div>
             <div className="flex justify-between text-sm mb-1.5">
-              <span className="text-muted-foreground">Bootcamp Videos</span>
+              <span className="text-muted-foreground">Videos</span>
               <span className="font-medium text-foreground">
                 {system.bootcamp.completed} / {system.bootcamp.total}
               </span>
