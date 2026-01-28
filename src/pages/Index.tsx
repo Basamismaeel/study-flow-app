@@ -11,11 +11,27 @@ import { MedicalSystem, DailyTask } from '@/types';
 const Index = () => {
   const [systems, setSystems] = useLocalStorage<MedicalSystem[]>('usmle-systems', initialSystems);
   const [tasks, setTasks] = useLocalStorage<DailyTask[]>('usmle-daily-tasks', []);
+  const [selectedNextSystemId, setSelectedNextSystemId] = useLocalStorage<string | null>('usmle-next-system', null);
 
   const handleUpdateSystem = (id: string, updates: Partial<MedicalSystem>) => {
     setSystems(prev => prev.map(system => 
       system.id === id ? { ...system, ...updates } : system
     ));
+  };
+
+  const handleAddSystem = (system: Omit<MedicalSystem, 'id'>) => {
+    const newSystem: MedicalSystem = {
+      ...system,
+      id: crypto.randomUUID(),
+    };
+    setSystems(prev => [...prev, newSystem]);
+  };
+
+  const handleDeleteSystem = (id: string) => {
+    setSystems(prev => prev.filter(system => system.id !== id));
+    if (selectedNextSystemId === id) {
+      setSelectedNextSystemId(null);
+    }
   };
 
   const handleAddTask = (text: string) => {
@@ -38,16 +54,31 @@ const Index = () => {
     setTasks(prev => prev.filter(task => task.id !== id));
   };
 
+  const handleClearAllTasks = () => {
+    setTasks([]);
+  };
+
   return (
     <Layout>
       <Routes>
-        <Route path="/" element={<Dashboard systems={systems} />} />
+        <Route 
+          path="/" 
+          element={
+            <Dashboard 
+              systems={systems} 
+              selectedNextSystemId={selectedNextSystemId}
+              onSelectNextSystem={setSelectedNextSystemId}
+            />
+          } 
+        />
         <Route 
           path="/systems" 
           element={
             <SystemsTracker 
               systems={systems} 
               onUpdateSystem={handleUpdateSystem}
+              onAddSystem={handleAddSystem}
+              onDeleteSystem={handleDeleteSystem}
             />
           } 
         />
@@ -59,6 +90,7 @@ const Index = () => {
               onAddTask={handleAddTask}
               onToggleTask={handleToggleTask}
               onDeleteTask={handleDeleteTask}
+              onClearAllTasks={handleClearAllTasks}
             />
           } 
         />

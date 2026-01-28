@@ -3,16 +3,28 @@ import { DailyTask } from '@/types';
 import { TaskItem } from '@/components/TaskItem';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Plus, CheckCircle2, ListTodo } from 'lucide-react';
+import { Plus, CheckCircle2, ListTodo, Trash2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface DailyTasksProps {
   tasks: DailyTask[];
   onAddTask: (text: string) => void;
   onToggleTask: (id: string) => void;
   onDeleteTask: (id: string) => void;
+  onClearAllTasks: () => void;
 }
 
-export function DailyTasks({ tasks, onAddTask, onToggleTask, onDeleteTask }: DailyTasksProps) {
+export function DailyTasks({ tasks, onAddTask, onToggleTask, onDeleteTask, onClearAllTasks }: DailyTasksProps) {
   const [newTask, setNewTask] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -54,15 +66,39 @@ export function DailyTasks({ tasks, onAddTask, onToggleTask, onDeleteTask }: Dai
 
       {/* Progress Summary */}
       {tasks.length > 0 && (
-        <div className="flex items-center justify-center gap-6 text-sm">
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <ListTodo className="w-4 h-4" />
-            <span>{pendingTasks.length} remaining</span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-6 text-sm">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <ListTodo className="w-4 h-4" />
+              <span>{pendingTasks.length} remaining</span>
+            </div>
+            <div className="flex items-center gap-2 text-success">
+              <CheckCircle2 className="w-4 h-4" />
+              <span>{completedTasks.length} completed</span>
+            </div>
           </div>
-          <div className="flex items-center gap-2 text-success">
-            <CheckCircle2 className="w-4 h-4" />
-            <span>{completedTasks.length} completed</span>
-          </div>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
+                <Trash2 className="w-4 h-4 mr-2" />
+                Clear All
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Clear all tasks?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will delete all {tasks.length} tasks (both completed and pending). This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={onClearAllTasks} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                  Clear All
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       )}
 
