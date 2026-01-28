@@ -18,33 +18,39 @@ export function SystemsTracker({ systems, onUpdateSystem, onAddSystem, onDeleteS
   const [selectedSystem, setSelectedSystem] = useState<MedicalSystem | null>(null);
   const [editValues, setEditValues] = useState({
     bootcampCompleted: 0,
+    bootcampTotal: 0,
     qbankCompleted: 0,
+    qbankTotal: 0,
   });
 
   const openEditDialog = (system: MedicalSystem) => {
     setSelectedSystem(system);
     setEditValues({
       bootcampCompleted: system.bootcamp.completed,
+      bootcampTotal: system.bootcamp.total,
       qbankCompleted: system.qbank.completed,
+      qbankTotal: system.qbank.total,
     });
   };
 
   const handleSave = () => {
     if (!selectedSystem) return;
 
-    const bootcampCompleted = Math.min(editValues.bootcampCompleted, selectedSystem.bootcamp.total);
-    const qbankCompleted = Math.min(editValues.qbankCompleted, selectedSystem.qbank.total);
-    
+    const bootcampTotal = Math.max(0, editValues.bootcampTotal);
+    const qbankTotal = Math.max(0, editValues.qbankTotal);
+    const bootcampCompleted = Math.min(editValues.bootcampCompleted, bootcampTotal);
+    const qbankCompleted = Math.min(editValues.qbankCompleted, qbankTotal);
+
     let status: MedicalSystem['status'] = 'not-started';
-    if (bootcampCompleted === selectedSystem.bootcamp.total && qbankCompleted === selectedSystem.qbank.total) {
+    if (bootcampCompleted === bootcampTotal && qbankCompleted === qbankTotal) {
       status = 'completed';
     } else if (bootcampCompleted > 0 || qbankCompleted > 0) {
       status = 'in-progress';
     }
 
     onUpdateSystem(selectedSystem.id, {
-      bootcamp: { ...selectedSystem.bootcamp, completed: bootcampCompleted },
-      qbank: { ...selectedSystem.qbank, completed: qbankCompleted },
+      bootcamp: { completed: bootcampCompleted, total: bootcampTotal },
+      qbank: { completed: qbankCompleted, total: qbankTotal },
       status,
     });
 
@@ -58,8 +64,7 @@ export function SystemsTracker({ systems, onUpdateSystem, onAddSystem, onDeleteS
   };
 
   const adjustValue = (field: 'bootcampCompleted' | 'qbankCompleted', delta: number) => {
-    if (!selectedSystem) return;
-    const max = field === 'bootcampCompleted' ? selectedSystem.bootcamp.total : selectedSystem.qbank.total;
+    const max = field === 'bootcampCompleted' ? editValues.bootcampTotal : editValues.qbankTotal;
     setEditValues(prev => ({
       ...prev,
       [field]: Math.max(0, Math.min(max, prev[field] + delta)),
@@ -139,10 +144,31 @@ export function SystemsTracker({ systems, onUpdateSystem, onAddSystem, onDeleteS
           </DialogHeader>
 
           <div className="space-y-6 py-4">
-            {/* Bootcamp Videos */}
+            {/* Number of videos (bootcamp total) */}
             <div>
               <label className="text-sm font-medium text-foreground mb-3 block">
-                Bootcamp Videos Completed
+                Number of videos (total)
+              </label>
+              <Input
+                type="number"
+                value={editValues.bootcampTotal}
+                onChange={(e) => {
+                  const v = Math.max(0, parseInt(e.target.value, 10) || 0);
+                  setEditValues(prev => ({
+                    ...prev,
+                    bootcampTotal: v,
+                    bootcampCompleted: Math.min(prev.bootcampCompleted, v),
+                  }));
+                }}
+                className="text-center text-lg font-medium"
+                min={0}
+              />
+            </div>
+
+            {/* Bootcamp Videos Completed */}
+            <div>
+              <label className="text-sm font-medium text-foreground mb-3 block">
+                Bootcamp videos completed
               </label>
               <div className="flex items-center gap-3">
                 <Button
@@ -158,30 +184,51 @@ export function SystemsTracker({ systems, onUpdateSystem, onAddSystem, onDeleteS
                   value={editValues.bootcampCompleted}
                   onChange={(e) => setEditValues(prev => ({
                     ...prev,
-                    bootcampCompleted: Math.max(0, Math.min(selectedSystem?.bootcamp.total || 0, parseInt(e.target.value) || 0))
+                    bootcampCompleted: Math.max(0, Math.min(editValues.bootcampTotal, parseInt(e.target.value, 10) || 0))
                   }))}
                   className="text-center text-lg font-medium"
                   min={0}
-                  max={selectedSystem?.bootcamp.total}
+                  max={editValues.bootcampTotal}
                 />
                 <Button
                   variant="outline"
                   size="icon"
                   onClick={() => adjustValue('bootcampCompleted', 1)}
-                  disabled={editValues.bootcampCompleted >= (selectedSystem?.bootcamp.total || 0)}
+                  disabled={editValues.bootcampCompleted >= editValues.bootcampTotal}
                 >
                   <Plus className="h-4 w-4" />
                 </Button>
                 <span className="text-sm text-muted-foreground whitespace-nowrap">
-                  / {selectedSystem?.bootcamp.total}
+                  / {editValues.bootcampTotal}
                 </span>
               </div>
             </div>
 
-            {/* QBank Questions */}
+            {/* Number of questions (qbank total) */}
             <div>
               <label className="text-sm font-medium text-foreground mb-3 block">
-                QBank Questions Completed
+                Number of questions (total)
+              </label>
+              <Input
+                type="number"
+                value={editValues.qbankTotal}
+                onChange={(e) => {
+                  const v = Math.max(0, parseInt(e.target.value, 10) || 0);
+                  setEditValues(prev => ({
+                    ...prev,
+                    qbankTotal: v,
+                    qbankCompleted: Math.min(prev.qbankCompleted, v),
+                  }));
+                }}
+                className="text-center text-lg font-medium"
+                min={0}
+              />
+            </div>
+
+            {/* QBank Questions Completed */}
+            <div>
+              <label className="text-sm font-medium text-foreground mb-3 block">
+                QBank questions completed
               </label>
               <div className="flex items-center gap-3">
                 <Button
@@ -197,22 +244,22 @@ export function SystemsTracker({ systems, onUpdateSystem, onAddSystem, onDeleteS
                   value={editValues.qbankCompleted}
                   onChange={(e) => setEditValues(prev => ({
                     ...prev,
-                    qbankCompleted: Math.max(0, Math.min(selectedSystem?.qbank.total || 0, parseInt(e.target.value) || 0))
+                    qbankCompleted: Math.max(0, Math.min(editValues.qbankTotal, parseInt(e.target.value, 10) || 0))
                   }))}
                   className="text-center text-lg font-medium"
                   min={0}
-                  max={selectedSystem?.qbank.total}
+                  max={editValues.qbankTotal}
                 />
                 <Button
                   variant="outline"
                   size="icon"
                   onClick={() => adjustValue('qbankCompleted', 10)}
-                  disabled={editValues.qbankCompleted >= (selectedSystem?.qbank.total || 0)}
+                  disabled={editValues.qbankCompleted >= editValues.qbankTotal}
                 >
                   <Plus className="h-4 w-4" />
                 </Button>
                 <span className="text-sm text-muted-foreground whitespace-nowrap">
-                  / {selectedSystem?.qbank.total}
+                  / {editValues.qbankTotal}
                 </span>
               </div>
               <p className="text-xs text-muted-foreground mt-2">Use +/- buttons to adjust by 10</p>
