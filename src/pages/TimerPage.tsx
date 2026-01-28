@@ -21,6 +21,7 @@ export function TimerPage() {
     isRunning, 
     isComplete, 
     progress, 
+    canSetDuration, 
     startTimer, 
     pauseTimer, 
     resumeTimer, 
@@ -55,16 +56,21 @@ export function TimerPage() {
     });
   };
 
+  const isPaused = isTimerMode && !isRunning && !isComplete;
+  // Show time inputs and Start when idle, after complete, or when timer shows 00:00 and isn't running
+  const isFinished = timeLeft === 0 && !isRunning;
+  const showSetDuration = canSetDuration || isComplete || isFinished;
+
   const handleStart = () => {
-    if (isTimerMode && !isRunning && !isComplete) {
-      resumeTimer();
-    } else {
-      startTimer(hours, minutes, seconds);
-    }
+    startTimer(hours, minutes, seconds);
   };
 
   const handlePause = () => {
     pauseTimer();
+  };
+
+  const handleResume = () => {
+    resumeTimer();
   };
 
   const handleReset = () => {
@@ -87,7 +93,7 @@ export function TimerPage() {
   };
 
   const applyQuickSet = () => {
-    const num = Math.max(0, parseInt(quickValue) || 0);
+    const num = Math.max(0, parseInt(quickValue, 10) || 0);
     if (quickUnit === 'minutes') {
       const h = Math.floor(num / 60);
       const m = num % 60;
@@ -100,6 +106,10 @@ export function TimerPage() {
       setSeconds(0);
     }
   };
+
+  // When user can set duration, show their selected time in the circle; otherwise show countdown
+  const displaySeconds = showSetDuration ? hours * 3600 + minutes * 60 + seconds : timeLeft;
+  const displayProgress = showSetDuration ? 0 : progress;
 
   const handleQuickValueKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') applyQuickSet();
@@ -159,7 +169,7 @@ export function TimerPage() {
                 strokeWidth="8"
                 strokeLinecap="round"
                 strokeDasharray={2 * Math.PI * 100}
-                strokeDashoffset={2 * Math.PI * 100 * (1 - progress / 100)}
+                strokeDashoffset={2 * Math.PI * 100 * (1 - displayProgress / 100)}
               />
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
@@ -167,13 +177,13 @@ export function TimerPage() {
                 'timer-display',
                 isComplete && 'text-destructive'
               )}>
-                {formatTime(timeLeft)}
+                {formatTime(displaySeconds)}
               </span>
             </div>
           </div>
 
-          {/* Time Adjustment (only when not running) */}
-          {!isTimerMode && (
+          {/* Time Adjustment (when user can set duration: idle or after complete/reset) */}
+          {showSetDuration && (
             <div className="space-y-4 mb-6">
               {/* Quick set: amount + minutes or hours */}
               <div className="flex flex-col sm:flex-row items-center justify-center gap-2 p-3 rounded-lg bg-muted/50">
@@ -290,27 +300,35 @@ export function TimerPage() {
             </div>
           )}
 
-          {/* Controls */}
-          <div className="flex justify-center gap-4">
-            {!isRunning ? (
-              <Button 
-                size="lg" 
-                onClick={handleStart} 
+          {/* Controls: Start, Pause, Resume, Reset */}
+          <div className="flex flex-wrap justify-center gap-3">
+            {showSetDuration && (
+              <Button
+                size="lg"
+                onClick={handleStart}
                 className="px-8"
-                disabled={!isTimerMode && hours === 0 && minutes === 0 && seconds === 0}
+                disabled={hours === 0 && minutes === 0 && seconds === 0}
               >
                 <Play className="w-5 h-5 mr-2" />
-                {isTimerMode && !isComplete ? 'Resume' : 'Start'}
+                Start
               </Button>
-            ) : (
+            )}
+            {isRunning && (
               <Button size="lg" variant="outline" onClick={handlePause} className="px-8">
                 <Pause className="w-5 h-5 mr-2" />
                 Pause
               </Button>
             )}
-            {(isTimerMode || isComplete) && (
+            {isPaused && (
+              <Button size="lg" variant="outline" onClick={handleResume} className="px-8">
+                <Play className="w-5 h-5 mr-2" />
+                Resume
+              </Button>
+            )}
+            {(isTimerMode || isComplete || isFinished) && (
               <Button size="lg" variant="ghost" onClick={handleReset}>
-                <RotateCcw className="w-5 h-5" />
+                <RotateCcw className="w-5 h-5 mr-2" />
+                Reset
               </Button>
             )}
           </div>

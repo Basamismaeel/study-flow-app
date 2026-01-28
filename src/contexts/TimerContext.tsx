@@ -14,6 +14,8 @@ interface TimerContextType {
   isRunning: boolean;
   isComplete: boolean;
   progress: number;
+  /** True when user can change duration (idle or after complete/reset) */
+  canSetDuration: boolean;
   startTimer: (hours: number, minutes: number, seconds: number) => void;
   pauseTimer: () => void;
   resumeTimer: () => void;
@@ -41,7 +43,12 @@ export function TimerProvider({ children }: { children: ReactNode }) {
         setTimeLeft(remaining);
         
         if (remaining === 0 && !timerState.isComplete) {
-          setTimerState(prev => ({ ...prev, isRunning: false, isComplete: true }));
+          setTimerState(prev => ({
+            ...prev,
+            targetTime: null,
+            isRunning: false,
+            isComplete: true,
+          }));
           // Browser notification
           if (Notification.permission === 'granted') {
             new Notification('⏰ Timer Complete!', {
@@ -123,6 +130,8 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     ? ((timerState.totalSeconds - timeLeft) / timerState.totalSeconds) * 100 
     : 0;
 
+  const canSetDuration = !timerState.targetTime || timerState.isComplete;
+
   return (
     <TimerContext.Provider value={{
       timeLeft,
@@ -130,6 +139,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       isRunning: timerState.isRunning,
       isComplete: timerState.isComplete,
       progress,
+      canSetDuration,
       startTimer,
       pauseTimer,
       resumeTimer,
