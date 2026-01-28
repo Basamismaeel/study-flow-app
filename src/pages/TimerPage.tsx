@@ -1,15 +1,20 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Play, Pause, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTimer } from '@/contexts/TimerContext';
+
+type TimeUnit = 'minutes' | 'hours';
 
 export function TimerPage() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [hours, setHours] = useState(0);
   const [minutes, setMinutes] = useState(25);
   const [seconds, setSeconds] = useState(0);
+  const [quickValue, setQuickValue] = useState('');
+  const [quickUnit, setQuickUnit] = useState<TimeUnit>('minutes');
   
   const { 
     timeLeft, 
@@ -70,7 +75,7 @@ export function TimerPage() {
     const num = Math.max(0, parseInt(value) || 0);
     switch (field) {
       case 'hours':
-        setHours(Math.min(23, num));
+        setHours(Math.min(99, num));
         break;
       case 'minutes':
         setMinutes(Math.min(59, num));
@@ -79,6 +84,25 @@ export function TimerPage() {
         setSeconds(Math.min(59, num));
         break;
     }
+  };
+
+  const applyQuickSet = () => {
+    const num = Math.max(0, parseInt(quickValue) || 0);
+    if (quickUnit === 'minutes') {
+      const h = Math.floor(num / 60);
+      const m = num % 60;
+      setHours(Math.min(99, h));
+      setMinutes(m);
+      setSeconds(0);
+    } else {
+      setHours(Math.min(99, num));
+      setMinutes(0);
+      setSeconds(0);
+    }
+  };
+
+  const handleQuickValueKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') applyQuickSet();
   };
 
   const selectPreset = (h: number, m: number, s: number) => {
@@ -151,6 +175,67 @@ export function TimerPage() {
           {/* Time Adjustment (only when not running) */}
           {!isTimerMode && (
             <div className="space-y-4 mb-6">
+              {/* Quick set: amount + minutes or hours */}
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-2 p-3 rounded-lg bg-muted/50">
+                <Label className="text-xs text-muted-foreground shrink-0">Set duration</Label>
+                <Input
+                  type="number"
+                  placeholder={quickUnit === 'minutes' ? 'e.g. 25' : 'e.g. 2'}
+                  value={quickValue}
+                  onChange={(e) => setQuickValue(e.target.value)}
+                  onKeyDown={handleQuickValueKeyDown}
+                  className="w-24 text-center font-medium"
+                  min={0}
+                />
+                <div className="flex rounded-md border border-input overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuickUnit('minutes');
+                      if (quickValue) {
+                        const num = Math.max(0, parseInt(quickValue) || 0);
+                        setHours(Math.min(99, Math.floor(num / 60)));
+                        setMinutes(num % 60);
+                        setSeconds(0);
+                      }
+                    }}
+                    className={cn(
+                      'px-3 py-2 text-sm font-medium transition-colors',
+                      quickUnit === 'minutes'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-background text-muted-foreground hover:bg-muted'
+                    )}
+                  >
+                    Minutes
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuickUnit('hours');
+                      if (quickValue) {
+                        const num = Math.max(0, parseInt(quickValue) || 0);
+                        setHours(Math.min(99, num));
+                        setMinutes(0);
+                        setSeconds(0);
+                      }
+                    }}
+                    className={cn(
+                      'px-3 py-2 text-sm font-medium transition-colors',
+                      quickUnit === 'hours'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-background text-muted-foreground hover:bg-muted'
+                    )}
+                  >
+                    Hours
+                  </button>
+                </div>
+                <Button variant="secondary" size="sm" onClick={applyQuickSet}>
+                  Apply
+                </Button>
+              </div>
+
+              <p className="text-xs text-muted-foreground text-center">Or set hours, minutes, seconds below</p>
+
               <div className="flex items-center justify-center gap-2">
                 <div className="text-center">
                   <label className="text-xs text-muted-foreground block mb-1">Hours</label>
@@ -160,7 +245,7 @@ export function TimerPage() {
                     onChange={(e) => handleInputChange('hours', e.target.value)}
                     className="w-20 text-center text-lg font-medium"
                     min={0}
-                    max={23}
+                    max={99}
                   />
                 </div>
                 <span className="text-2xl text-muted-foreground mt-5">:</span>
