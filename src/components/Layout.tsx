@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, ListTodo, Clock, BookOpen, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, ListTodo, Clock, BookOpen, Sun, Moon, CalendarDays } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { useTimer } from '@/contexts/TimerContext';
 import { TimerNotification } from '@/components/TimerNotification';
@@ -13,6 +13,7 @@ interface LayoutProps {
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/systems', icon: BookOpen, label: 'Systems' },
+  { to: '/planner', icon: CalendarDays, label: 'Planner' },
   { to: '/daily', icon: ListTodo, label: 'Daily Tasks' },
   { to: '/timer', icon: Clock, label: 'Timer' },
 ];

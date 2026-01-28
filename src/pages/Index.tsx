@@ -4,6 +4,7 @@ import { Dashboard } from './Dashboard';
 import { SystemsTracker } from './SystemsTracker';
 import { DailyTasks } from './DailyTasks';
 import { TimerPage } from './TimerPage';
+import { PlannerPage } from './PlannerPage';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { initialSystems } from '@/data/initialSystems';
 import { MedicalSystem, DailyTask } from '@/types';
@@ -95,6 +96,7 @@ const Index = () => {
           } 
         />
         <Route path="/timer" element={<TimerPage />} />
+        <Route path="/planner" element={<PlannerPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Layout>

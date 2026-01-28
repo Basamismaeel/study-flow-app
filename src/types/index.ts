@@ -26,3 +26,19 @@ export interface ActivityLog {
   description: string;
   systemId?: string;
 }
+
+/** Single task in a plan (e.g. video name). Order in plan.tasks matters. */
+export interface PlannerTask {
+  id: string;
+  name: string;
+  completed: boolean;
+}
+
+/** A plan with ordered tasks and day-based scheduling. */
+export interface Plan {
+  id: string;
+  name: string;
+  totalDays: number;
+  tasksPerDay: number;
+  tasks: PlannerTask[];
+}
