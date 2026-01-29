@@ -53,7 +53,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
           if (Notification.permission === 'granted') {
             new Notification('⏰ Timer Complete!', {
               body: 'Your focus session has ended.',
-              icon: '/favicon.ico',
+              icon: '/favicon.svg',
             });
           }
         }
