@@ -23,11 +23,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useUserLocalStorage } from '@/hooks/useUserLocalStorage';
 import { cn } from '@/lib/utils';
 
 const MAX_PINNED = 5;
-const NAV_PINNED_KEY_PREFIX = 'study-flow-nav-pinned-';
+const NAV_PINNED_KEY_PREFIX = 'nav-pinned-';
 
 interface LayoutProps {
   children: ReactNode;
@@ -109,7 +109,7 @@ export function Layout({ children }: LayoutProps) {
   const isMedicine = user?.major?.toLowerCase() === 'medicine';
   const navItems = isMedicine ? medicineNavItems : genericNavItems;
   const majorKey = isMedicine ? 'medicine' : 'generic';
-  const [storedPinned, setStoredPinned] = useLocalStorage<string[]>(
+  const [storedPinned, setStoredPinned] = useUserLocalStorage<string[]>(
     NAV_PINNED_KEY_PREFIX + majorKey,
     getDefaultPinned(navItems)
   );

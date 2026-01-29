@@ -4,13 +4,19 @@ import {
   useState,
   useEffect,
   useCallback,
+  useRef,
   ReactNode,
 } from 'react';
+import { onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
+import type { User } from 'firebase/auth';
+import { auth } from '@/firebase';
+import * as authService from '@/services/auth';
+import { loadUserData, saveUserData } from '@/services/userData';
+import { migrateLocalStorageToFirestore } from '@/services/migration';
 
 export interface AuthUser {
   id: string;
   email: string;
-  /** Selected major; null until user completes major selection. Medicine = special locked case. */
   major: string | null;
 }
 
@@ -25,94 +31,60 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-const USERS_KEY = 'study-flow-auth-users';
-const CURRENT_KEY = 'study-flow-auth-current';
-
-function hashPassword(password: string): string {
-  let h = 5381;
-  for (let i = 0; i < password.length; i++) {
-    h = ((h << 5) + h) + password.charCodeAt(i);
-  }
-  return (h >>> 0).toString(36);
-}
-
-type UserRecord = { id: string; passwordHash: string; major?: string | null };
-
-function getUsers(): Record<string, UserRecord> {
-  try {
-    const raw = window.localStorage.getItem(USERS_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
-}
-
-function setUsers(users: Record<string, UserRecord>) {
-  window.localStorage.setItem(USERS_KEY, JSON.stringify(users));
-}
-
-function getCurrentUser(): AuthUser | null {
-  try {
-    const raw = window.localStorage.getItem(CURRENT_KEY);
-    return parseStoredUser(raw);
-  } catch {
-    return null;
-  }
-}
-
-function setCurrentUser(user: AuthUser | null) {
-  if (user) {
-    window.localStorage.setItem(CURRENT_KEY, JSON.stringify(user));
-  } else {
-    window.localStorage.removeItem(CURRENT_KEY);
-  }
-}
-
-/** Parse stored user; ensure major field exists (legacy users get null). */
-function parseStoredUser(raw: string | null): AuthUser | null {
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw) as Record<string, unknown>;
-    const id = typeof parsed.id === 'string' ? parsed.id : '';
-    const email = typeof parsed.email === 'string' ? parsed.email : '';
-    if (!id || !email) return null;
-    const major = typeof parsed.major === 'string' ? parsed.major : (parsed.major === null ? null : null);
-    return { id, email, major: major ?? null };
-  } catch {
-    return null;
-  }
+function toAuthUser(fb: User, major: string | null): AuthUser {
+  return {
+    id: fb.uid,
+    email: fb.email ?? '',
+    major,
+  };
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const [fbUser, setFbUser] = useState<User | null>(null);
+  const [major, setMajorState] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const migrationDone = useRef(false);
+
+  const user: AuthUser | null =
+    fbUser && fbUser.email
+      ? toAuthUser(fbUser, major)
+      : null;
 
   useEffect(() => {
-    const current = getCurrentUser();
-    if (current) {
-      const users = getUsers();
-      const record = users[current.email];
-      const major = record?.major ?? current.major ?? null;
-      const synced: AuthUser = { ...current, major };
-      if (major !== current.major) setCurrentUser(synced);
-      setUser(synced);
-    } else {
-      setUser(null);
-    }
-    setLoading(false);
+    const unsub = onAuthStateChanged(auth, async (fb) => {
+      setFbUser(fb);
+      if (!fb) {
+        setMajorState(null);
+        setLoading(false);
+        return;
+      }
+
+      if (!migrationDone.current) {
+        migrationDone.current = true;
+        try {
+          await migrateLocalStorageToFirestore(fb.uid);
+        } catch (e) {
+          console.error('Migration failed:', e);
+        }
+      }
+
+      try {
+        const data = await loadUserData(fb.uid);
+        const m = (data.major as string | null | undefined) ?? null;
+        setMajorState(m);
+      } catch {
+        setMajorState(null);
+      } finally {
+        setLoading(false);
+      }
+    });
+    return () => unsub();
   }, []);
 
   const signIn = useCallback(
     async (email: string, password: string): Promise<{ error: string | null }> => {
-      const users = getUsers();
-      const normalized = email.trim().toLowerCase();
-      const record = users[normalized];
-      if (!record) return { error: 'No account with this email.' };
-      if (record.passwordHash !== hashPassword(password)) return { error: 'Wrong password.' };
-      const major = record.major ?? null;
-      const authUser: AuthUser = { id: record.id, email: normalized, major };
-      setCurrentUser(authUser);
-      setUser(authUser);
+      const res = await authService.login(email, password);
+      if ('error' in res) return { error: res.error };
       return { error: null };
     },
     []
@@ -120,48 +92,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = useCallback(
     async (email: string, password: string): Promise<{ error: string | null }> => {
-      const trimmed = email.trim();
-      if (!trimmed) return { error: 'Email is required.' };
-      if (!password || password.length < 6) return { error: 'Password must be at least 6 characters.' };
-
-      const users = getUsers();
-      const normalized = trimmed.toLowerCase();
-      if (users[normalized]) return { error: 'An account with this email already exists.' };
-      const id = crypto.randomUUID();
-      users[normalized] = { id, passwordHash: hashPassword(password) };
-      setUsers(users);
-      const authUser: AuthUser = { id, email: normalized, major: null };
-      setCurrentUser(authUser);
-      setUser(authUser);
+      const res = await authService.signUp(email, password);
+      if ('error' in res) return { error: res.error };
       return { error: null };
     },
     []
   );
 
   const signOut = useCallback(async () => {
-    setCurrentUser(null);
-    setUser(null);
+    await firebaseSignOut(auth);
   }, []);
 
-  const setMajor = useCallback((major: string) => {
-    const value = major.trim();
-    setUser((prev) => {
-      if (!prev) return prev;
-      const newMajor = (value || prev.major) ?? null;
-      const updated: AuthUser = { ...prev, major: newMajor };
-      setCurrentUser(updated);
-      const users = getUsers();
-      const record = users[prev.email];
-      if (record) {
-        users[prev.email] = { ...record, major: newMajor };
-        setUsers(users);
-      }
-      return updated;
-    });
+  const setMajor = useCallback((value: string) => {
+    const m = value.trim() || null;
+    setMajorState(m);
+    const u = auth.currentUser;
+    if (u) {
+      saveUserData(u.uid, { major: m }).catch((e) =>
+        console.error('setMajor save:', e)
+      );
+    }
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, setMajor }}>
+    <AuthContext.Provider
+      value={{ user, loading, signIn, signUp, signOut, setMajor }}
+    >
       {children}
     </AuthContext.Provider>
   );

@@ -153,7 +153,7 @@ export function LoginPage() {
         </p>
 
         <p className="text-xs text-center text-muted-foreground border-t pt-4">
-          Accounts and data are stored locally on this device.
+          Accounts and data sync via Firebase — same login on all devices.
         </p>
       </div>
     </div>

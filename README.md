@@ -59,6 +59,11 @@ This project is built with:
 - React
 - shadcn-ui
 - Tailwind CSS
+- Firebase (Auth + Firestore) — auth and user data sync across devices. Run `npm install` to ensure the Firebase SDK is installed.
+
+### Firebase & Firestore
+
+Auth and user data live in Firebase. Deploy Firestore security rules (e.g. `firebase deploy --only firestore` if using Firebase CLI) so `firestore.rules` is active. Rules restrict `users/{uid}` to the signed-in user only.
 
 ## How can I deploy this project?
 
