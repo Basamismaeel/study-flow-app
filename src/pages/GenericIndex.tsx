@@ -121,6 +121,12 @@ export function GenericIndex() {
     setDailyTasks((prev) => prev.filter((t) => t.id !== id));
   };
 
+  const handleUpdateDailyTask = (id: string, text: string) => {
+    setDailyTasks((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, text } : t))
+    );
+  };
+
   const handleClearAllDailyTasks = () => setDailyTasks([]);
 
   return (
@@ -169,6 +175,7 @@ export function GenericIndex() {
             onAddTask={handleAddDailyTask}
             onToggleTask={handleToggleDailyTask}
             onDeleteTask={handleDeleteDailyTask}
+            onUpdateTask={handleUpdateDailyTask}
             onClearAllTasks={handleClearAllDailyTasks}
           />
         }

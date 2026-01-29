@@ -10,6 +10,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Minus, Plus, Save, Trash2, PlusCircle } from 'lucide-react';
 import type { SystemCustomTask } from '@/types';
 
+const EMOJI_OPTIONS = [
+  '🩺', '⚕️', '🏥', '💊', '💉', '🔬', '🧪', '🧫',
+  '❤️', '💓', '🧠', '🫁', '💧', '🫘', '🦴', '💪', '🩸',
+  '👁️', '👂', '👃', '👄', '🦷', '👅', '🧬',
+  '🛡️', '🦠', '🧴', '📋', '📊', '🎯', '🔍', '💡',
+  '🚑', '⛑️', '🎗️', '🧘', '🌡️', '💨', '🧩', '📚',
+];
+
 interface SystemsTrackerProps {
   systems: MedicalSystem[];
   onUpdateSystem: (id: string, updates: Partial<MedicalSystem>) => void;
@@ -17,30 +25,39 @@ interface SystemsTrackerProps {
   onDeleteSystem: (id: string) => void;
 }
 
+function parseNum(s: string): number {
+  const n = parseInt(s, 10);
+  return Number.isNaN(n) ? 0 : Math.max(0, n);
+}
+
 export function SystemsTracker({ systems, onUpdateSystem, onAddSystem, onDeleteSystem }: SystemsTrackerProps) {
   const [selectedSystem, setSelectedSystem] = useState<MedicalSystem | null>(null);
   const [editValues, setEditValues] = useState({
-    bootcampCompleted: 0,
-    bootcampTotal: 0,
-    qbankCompleted: 0,
-    qbankTotal: 0,
+    bootcampCompleted: '',
+    bootcampTotal: '',
+    qbankCompleted: '',
+    qbankTotal: '',
   });
   const [includeBootcamp, setIncludeBootcamp] = useState(true);
   const [includeQbank, setIncludeQbank] = useState(true);
   const [editCustomTasks, setEditCustomTasks] = useState<SystemCustomTask[]>([]);
   const [newCustomTaskLabel, setNewCustomTaskLabel] = useState('');
+  const [editName, setEditName] = useState('');
+  const [editIcon, setEditIcon] = useState('📚');
 
   const openEditDialog = (system: MedicalSystem) => {
     setSelectedSystem(system);
+    setEditName(system.name);
+    setEditIcon(system.icon);
     const hasBootcamp = system.bootcamp.total > 0;
     const hasQbank = system.qbank.total > 0;
     setIncludeBootcamp(hasBootcamp);
     setIncludeQbank(hasQbank);
     setEditValues({
-      bootcampCompleted: system.bootcamp.completed,
-      bootcampTotal: system.bootcamp.total,
-      qbankCompleted: system.qbank.completed,
-      qbankTotal: system.qbank.total,
+      bootcampCompleted: hasBootcamp ? (system.bootcamp.completed === 0 ? '' : String(system.bootcamp.completed)) : '',
+      bootcampTotal: hasBootcamp ? (system.bootcamp.total === 0 ? '' : String(system.bootcamp.total)) : '',
+      qbankCompleted: hasQbank ? (system.qbank.completed === 0 ? '' : String(system.qbank.completed)) : '',
+      qbankTotal: hasQbank ? (system.qbank.total === 0 ? '' : String(system.qbank.total)) : '',
     });
     setEditCustomTasks(system.customTasks ?? []);
     setNewCustomTaskLabel('');
@@ -57,6 +74,12 @@ export function SystemsTracker({ systems, onUpdateSystem, onAddSystem, onDeleteS
     setEditCustomTasks((prev) => prev.filter((t) => t.id !== id));
   };
 
+  const updateCustomTaskLabel = (id: string, label: string) => {
+    setEditCustomTasks((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, label } : t))
+    );
+  };
+
   const handleSave = () => {
     if (!selectedSystem) return;
     if (!includeBootcamp && !includeQbank) {
@@ -64,10 +87,10 @@ export function SystemsTracker({ systems, onUpdateSystem, onAddSystem, onDeleteS
       return;
     }
 
-    const bootcampTotal = includeBootcamp ? Math.max(0, editValues.bootcampTotal) : 0;
-    const qbankTotal = includeQbank ? Math.max(0, editValues.qbankTotal) : 0;
-    const bootcampCompleted = includeBootcamp ? Math.min(editValues.bootcampCompleted, bootcampTotal) : 0;
-    const qbankCompleted = includeQbank ? Math.min(editValues.qbankCompleted, qbankTotal) : 0;
+    const bootcampTotal = includeBootcamp ? parseNum(editValues.bootcampTotal) : 0;
+    const qbankTotal = includeQbank ? parseNum(editValues.qbankTotal) : 0;
+    const bootcampCompleted = includeBootcamp ? Math.min(parseNum(editValues.bootcampCompleted), bootcampTotal) : 0;
+    const qbankCompleted = includeQbank ? Math.min(parseNum(editValues.qbankCompleted), qbankTotal) : 0;
 
     // Calculate status based on enabled fields only
     let status: MedicalSystem['status'] = 'not-started';
@@ -80,10 +103,16 @@ export function SystemsTracker({ systems, onUpdateSystem, onAddSystem, onDeleteS
       status = 'in-progress';
     }
 
+    const customTasks = editCustomTasks
+      .map((t) => ({ ...t, label: t.label.trim() }))
+      .filter((t) => t.label.length > 0);
+
     onUpdateSystem(selectedSystem.id, {
+      name: editName.trim() || selectedSystem.name,
+      icon: editIcon,
       bootcamp: { completed: bootcampCompleted, total: bootcampTotal },
       qbank: { completed: qbankCompleted, total: qbankTotal },
-      customTasks: editCustomTasks,
+      customTasks,
       status,
     });
 
@@ -97,11 +126,10 @@ export function SystemsTracker({ systems, onUpdateSystem, onAddSystem, onDeleteS
   };
 
   const adjustValue = (field: 'bootcampCompleted' | 'qbankCompleted', delta: number) => {
-    const max = field === 'bootcampCompleted' ? editValues.bootcampTotal : editValues.qbankTotal;
-    setEditValues(prev => ({
-      ...prev,
-      [field]: Math.max(0, Math.min(max, prev[field] + delta)),
-    }));
+    const max = field === 'bootcampCompleted' ? parseNum(editValues.bootcampTotal) : parseNum(editValues.qbankTotal);
+    const cur = field === 'bootcampCompleted' ? parseNum(editValues.bootcampCompleted) : parseNum(editValues.qbankCompleted);
+    const next = Math.max(0, Math.min(max, cur + delta));
+    setEditValues(prev => ({ ...prev, [field]: String(next) }));
   };
 
   const completedSystems = systems.filter(s => s.status === 'completed');
@@ -170,13 +198,40 @@ export function SystemsTracker({ systems, onUpdateSystem, onAddSystem, onDeleteS
       <Dialog open={!!selectedSystem} onOpenChange={(open) => !open && setSelectedSystem(null)}>
         <DialogContent className="sm:max-w-xs max-h-[90vh] flex flex-col overflow-hidden p-4 gap-3 [&>button]:shrink-0">
           <DialogHeader className="shrink-0">
-            <DialogTitle className="flex items-center gap-2 text-base">
-              <span className="text-xl">{selectedSystem?.icon}</span>
-              {selectedSystem?.name}
-            </DialogTitle>
+            <DialogTitle className="text-base">Edit system</DialogTitle>
           </DialogHeader>
 
           <div className="overflow-y-auto min-h-0 flex-1 -mx-1 px-1 space-y-4 py-1">
+            {/* Name & icon */}
+            <div className="space-y-2">
+              <Label>Name</Label>
+              <Input
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                placeholder="System name"
+                className="font-medium"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Icon</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {EMOJI_OPTIONS.map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => setEditIcon(emoji)}
+                    className={`w-8 h-8 text-base rounded-md border-2 transition-all ${
+                      editIcon === emoji
+                        ? 'border-primary bg-primary/10'
+                        : 'border-border hover:border-primary/50'
+                    }`}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Content Type Selection */}
             <div className="space-y-3">
               <Label>Content Types</Label>
@@ -190,8 +245,8 @@ export function SystemsTracker({ systems, onUpdateSystem, onAddSystem, onDeleteS
                       if (!checked) {
                         setEditValues(prev => ({
                           ...prev,
-                          bootcampTotal: 0,
-                          bootcampCompleted: 0,
+                          bootcampTotal: '',
+                          bootcampCompleted: '',
                         }));
                       }
                     }}
@@ -209,8 +264,8 @@ export function SystemsTracker({ systems, onUpdateSystem, onAddSystem, onDeleteS
                       if (!checked) {
                         setEditValues(prev => ({
                           ...prev,
-                          qbankTotal: 0,
-                          qbankCompleted: 0,
+                          qbankTotal: '',
+                          qbankCompleted: '',
                         }));
                       }
                     }}
@@ -233,41 +288,28 @@ export function SystemsTracker({ systems, onUpdateSystem, onAddSystem, onDeleteS
                 value={editValues.bootcampTotal}
                 onChange={(e) => {
                   const val = e.target.value;
-                  if (val === '') {
-                    return;
-                  }
-                  const num = parseInt(val, 10);
-                  if (!isNaN(num)) {
-                    const v = Math.max(0, num);
-                    setEditValues(prev => ({
-                      ...prev,
-                      bootcampTotal: v,
-                      bootcampCompleted: Math.min(prev.bootcampCompleted, v),
-                    }));
-                  }
+                  setEditValues(prev => {
+                    const next = { ...prev, bootcampTotal: val };
+                    const num = parseInt(val, 10);
+                    if (val !== '' && !Number.isNaN(num) && num >= 0) {
+                      const total = Math.max(0, num);
+                      next.bootcampCompleted = String(Math.min(parseNum(prev.bootcampCompleted), total));
+                    }
+                    return next;
+                  });
                 }}
-                onBlur={(e) => {
-                  const val = e.target.value;
-                  if (val === '' || isNaN(parseInt(val, 10))) {
-                    const v = editValues.bootcampTotal || 0;
-                    setEditValues(prev => ({
-                      ...prev,
-                      bootcampTotal: v,
-                      bootcampCompleted: Math.min(prev.bootcampCompleted, v),
-                    }));
-                    e.target.value = v.toString();
-                  } else {
-                    const v = Math.max(0, parseInt(val, 10));
-                    setEditValues(prev => ({
-                      ...prev,
-                      bootcampTotal: v,
-                      bootcampCompleted: Math.min(prev.bootcampCompleted, v),
-                    }));
-                    e.target.value = v.toString();
-                  }
+                onBlur={() => {
+                  const raw = editValues.bootcampTotal;
+                  if (raw === '') return;
+                  const total = parseNum(raw);
+                  setEditValues(prev => ({
+                    ...prev,
+                    bootcampTotal: String(total),
+                    bootcampCompleted: String(Math.min(parseNum(prev.bootcampCompleted), total)),
+                  }));
                 }}
                 className="text-center text-lg font-medium"
-                min={0}
+                placeholder="0"
               />
               </div>
             )}
@@ -283,58 +325,34 @@ export function SystemsTracker({ systems, onUpdateSystem, onAddSystem, onDeleteS
                   variant="outline"
                   size="icon"
                   onClick={() => adjustValue('bootcampCompleted', -1)}
-                  disabled={editValues.bootcampCompleted <= 0}
+                  disabled={parseNum(editValues.bootcampCompleted) <= 0}
                 >
                   <Minus className="h-4 w-4" />
                 </Button>
                 <Input
                   type="number"
                   value={editValues.bootcampCompleted}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (val === '') {
-                      return;
-                    }
-                    const num = parseInt(val, 10);
-                    if (!isNaN(num)) {
-                      setEditValues(prev => ({
-                        ...prev,
-                        bootcampCompleted: Math.max(0, Math.min(prev.bootcampTotal, num))
-                      }));
-                    }
-                  }}
-                  onBlur={(e) => {
-                    const val = e.target.value;
-                    if (val === '' || isNaN(parseInt(val, 10))) {
-                      const v = editValues.bootcampCompleted || 0;
-                      setEditValues(prev => ({
-                        ...prev,
-                        bootcampCompleted: v
-                      }));
-                      e.target.value = v.toString();
-                    } else {
-                      const v = Math.max(0, Math.min(editValues.bootcampTotal, parseInt(val, 10)));
-                      setEditValues(prev => ({
-                        ...prev,
-                        bootcampCompleted: v
-                      }));
-                      e.target.value = v.toString();
-                    }
+                  onChange={(e) => setEditValues(prev => ({ ...prev, bootcampCompleted: e.target.value }))}
+                  onBlur={() => {
+                    const raw = editValues.bootcampCompleted;
+                    if (raw === '') return;
+                    const total = parseNum(editValues.bootcampTotal);
+                    const v = Math.max(0, Math.min(total, parseNum(raw)));
+                    setEditValues(prev => ({ ...prev, bootcampCompleted: String(v) }));
                   }}
                   className="text-center text-lg font-medium"
-                  min={0}
-                  max={editValues.bootcampTotal}
+                  placeholder="0"
                 />
                 <Button
                   variant="outline"
                   size="icon"
                   onClick={() => adjustValue('bootcampCompleted', 1)}
-                  disabled={editValues.bootcampCompleted >= editValues.bootcampTotal}
+                  disabled={parseNum(editValues.bootcampCompleted) >= parseNum(editValues.bootcampTotal)}
                 >
                   <Plus className="h-4 w-4" />
                 </Button>
                 <span className="text-sm text-muted-foreground whitespace-nowrap">
-                  / {editValues.bootcampTotal}
+                  / {editValues.bootcampTotal === '' ? '0' : editValues.bootcampTotal}
                 </span>
               </div>
               </div>
@@ -351,41 +369,28 @@ export function SystemsTracker({ systems, onUpdateSystem, onAddSystem, onDeleteS
                 value={editValues.qbankTotal}
                 onChange={(e) => {
                   const val = e.target.value;
-                  if (val === '') {
-                    return;
-                  }
-                  const num = parseInt(val, 10);
-                  if (!isNaN(num)) {
-                    const v = Math.max(0, num);
-                    setEditValues(prev => ({
-                      ...prev,
-                      qbankTotal: v,
-                      qbankCompleted: Math.min(prev.qbankCompleted, v),
-                    }));
-                  }
+                  setEditValues(prev => {
+                    const next = { ...prev, qbankTotal: val };
+                    const num = parseInt(val, 10);
+                    if (val !== '' && !Number.isNaN(num) && num >= 0) {
+                      const total = Math.max(0, num);
+                      next.qbankCompleted = String(Math.min(parseNum(prev.qbankCompleted), total));
+                    }
+                    return next;
+                  });
                 }}
-                onBlur={(e) => {
-                  const val = e.target.value;
-                  if (val === '' || isNaN(parseInt(val, 10))) {
-                    const v = editValues.qbankTotal || 0;
-                    setEditValues(prev => ({
-                      ...prev,
-                      qbankTotal: v,
-                      qbankCompleted: Math.min(prev.qbankCompleted, v),
-                    }));
-                    e.target.value = v.toString();
-                  } else {
-                    const v = Math.max(0, parseInt(val, 10));
-                    setEditValues(prev => ({
-                      ...prev,
-                      qbankTotal: v,
-                      qbankCompleted: Math.min(prev.qbankCompleted, v),
-                    }));
-                    e.target.value = v.toString();
-                  }
+                onBlur={() => {
+                  const raw = editValues.qbankTotal;
+                  if (raw === '') return;
+                  const total = parseNum(raw);
+                  setEditValues(prev => ({
+                    ...prev,
+                    qbankTotal: String(total),
+                    qbankCompleted: String(Math.min(parseNum(prev.qbankCompleted), total)),
+                  }));
                 }}
                 className="text-center text-lg font-medium"
-                min={0}
+                placeholder="0"
               />
               </div>
             )}
@@ -401,58 +406,34 @@ export function SystemsTracker({ systems, onUpdateSystem, onAddSystem, onDeleteS
                   variant="outline"
                   size="icon"
                   onClick={() => adjustValue('qbankCompleted', -10)}
-                  disabled={editValues.qbankCompleted <= 0}
+                  disabled={parseNum(editValues.qbankCompleted) <= 0}
                 >
                   <Minus className="h-4 w-4" />
                 </Button>
                 <Input
                   type="number"
                   value={editValues.qbankCompleted}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (val === '') {
-                      return;
-                    }
-                    const num = parseInt(val, 10);
-                    if (!isNaN(num)) {
-                      setEditValues(prev => ({
-                        ...prev,
-                        qbankCompleted: Math.max(0, Math.min(prev.qbankTotal, num))
-                      }));
-                    }
-                  }}
-                  onBlur={(e) => {
-                    const val = e.target.value;
-                    if (val === '' || isNaN(parseInt(val, 10))) {
-                      const v = editValues.qbankCompleted || 0;
-                      setEditValues(prev => ({
-                        ...prev,
-                        qbankCompleted: v
-                      }));
-                      e.target.value = v.toString();
-                    } else {
-                      const v = Math.max(0, Math.min(editValues.qbankTotal, parseInt(val, 10)));
-                      setEditValues(prev => ({
-                        ...prev,
-                        qbankCompleted: v
-                      }));
-                      e.target.value = v.toString();
-                    }
+                  onChange={(e) => setEditValues(prev => ({ ...prev, qbankCompleted: e.target.value }))}
+                  onBlur={() => {
+                    const raw = editValues.qbankCompleted;
+                    if (raw === '') return;
+                    const total = parseNum(editValues.qbankTotal);
+                    const v = Math.max(0, Math.min(total, parseNum(raw)));
+                    setEditValues(prev => ({ ...prev, qbankCompleted: String(v) }));
                   }}
                   className="text-center text-lg font-medium"
-                  min={0}
-                  max={editValues.qbankTotal}
+                  placeholder="0"
                 />
                 <Button
                   variant="outline"
                   size="icon"
                   onClick={() => adjustValue('qbankCompleted', 10)}
-                  disabled={editValues.qbankCompleted >= editValues.qbankTotal}
+                  disabled={parseNum(editValues.qbankCompleted) >= parseNum(editValues.qbankTotal)}
                 >
                   <Plus className="h-4 w-4" />
                 </Button>
                 <span className="text-sm text-muted-foreground whitespace-nowrap">
-                  / {editValues.qbankTotal}
+                  / {editValues.qbankTotal === '' ? '0' : editValues.qbankTotal}
                 </span>
               </div>
               <p className="text-xs text-muted-foreground mt-2">Use +/- buttons to adjust by 10</p>
@@ -468,12 +449,17 @@ export function SystemsTracker({ systems, onUpdateSystem, onAddSystem, onDeleteS
               <ul className="space-y-1.5 mb-2">
                 {editCustomTasks.map((t) => (
                   <li key={t.id} className="flex items-center gap-2 py-1.5 px-2 rounded-md border border-border bg-muted/30">
-                    <span className="text-sm font-medium flex-1">{t.label}</span>
+                    <Input
+                      value={t.label}
+                      onChange={(e) => updateCustomTaskLabel(t.id, e.target.value)}
+                      placeholder="Task name"
+                      className="h-8 text-sm font-medium flex-1 border-0 bg-transparent focus-visible:ring-1"
+                    />
                     <Button
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                      className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
                       onClick={() => removeCustomTask(t.id)}
                       aria-label={`Remove ${t.label}`}
                     >

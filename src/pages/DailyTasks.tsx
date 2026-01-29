@@ -21,10 +21,11 @@ interface DailyTasksProps {
   onAddTask: (text: string) => void;
   onToggleTask: (id: string) => void;
   onDeleteTask: (id: string) => void;
+  onUpdateTask?: (id: string, text: string) => void;
   onClearAllTasks: () => void;
 }
 
-export function DailyTasks({ tasks, onAddTask, onToggleTask, onDeleteTask, onClearAllTasks }: DailyTasksProps) {
+export function DailyTasks({ tasks, onAddTask, onToggleTask, onDeleteTask, onUpdateTask, onClearAllTasks }: DailyTasksProps) {
   const [newTask, setNewTask] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -120,6 +121,7 @@ export function DailyTasks({ tasks, onAddTask, onToggleTask, onDeleteTask, onCle
             task={task}
             onToggle={onToggleTask}
             onDelete={onDeleteTask}
+            onUpdate={onUpdateTask}
           />
         ))}
 
@@ -133,6 +135,7 @@ export function DailyTasks({ tasks, onAddTask, onToggleTask, onDeleteTask, onCle
             task={task}
             onToggle={onToggleTask}
             onDelete={onDeleteTask}
+            onUpdate={onUpdateTask}
           />
         ))}
       </div>

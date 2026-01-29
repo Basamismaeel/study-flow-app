@@ -60,6 +60,12 @@ export function MedicineIndex() {
     setTasks((prev) => prev.filter((task) => task.id !== id));
   };
 
+  const handleUpdateTask = (id: string, text: string) => {
+    setTasks((prev) =>
+      prev.map((task) => (task.id === id ? { ...task, text } : task))
+    );
+  };
+
   const handleClearAllTasks = () => setTasks([]);
 
   return (
@@ -94,6 +100,7 @@ export function MedicineIndex() {
             onAddTask={handleAddTask}
             onToggleTask={handleToggleTask}
             onDeleteTask={handleDeleteTask}
+            onUpdateTask={handleUpdateTask}
             onClearAllTasks={handleClearAllTasks}
           />
         }
