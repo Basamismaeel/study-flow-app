@@ -4,6 +4,7 @@ import { ArrowRight, BookOpen, FileQuestion, Target, ChevronDown, Upload, X, Loc
 import { MedicalSystem, DailyTask } from '@/types';
 import { ProgressBar } from '@/components/ProgressBar';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
 import { useUserLocalStorage } from '@/hooks/useUserLocalStorage';
 import { StudySessionBlock } from '@/components/StudySessionBlock';
 import { StudyGoalsCard } from '@/components/StudyGoalsCard';
@@ -30,6 +31,7 @@ interface ImagePosition {
 }
 
 export function Dashboard({ systems, selectedNextSystemId, onSelectNextSystem, dailyTasks = [] }: DashboardProps) {
+  const { user } = useAuth();
   const [dashboardImage, setDashboardImage] = useUserLocalStorage<string | null>('dashboard-image', null);
   const [imagePosition, setImagePosition] = useUserLocalStorage<ImagePosition>('dashboard-image-position', { x: 0, y: 0 });
   const [imageSize, setImageSize] = useUserLocalStorage<number>('dashboard-image-size', 200);
@@ -489,6 +491,9 @@ export function Dashboard({ systems, selectedNextSystemId, onSelectNextSystem, d
 
       {/* Welcome Section */}
       <div>
+        <p className="text-lg font-medium text-muted-foreground mb-1">
+          Hi{user?.email ? `, ${user.email.split('@')[0].replace(/^./, (c) => c.toUpperCase())}` : ''}
+        </p>
         <h1 className="text-3xl font-semibold text-foreground mb-2">Your work matters — you're training to save lives</h1>
         <p className="text-muted-foreground">Track your progress and stay organized</p>
       </div>
