@@ -168,15 +168,15 @@ export function SystemsTracker({ systems, onUpdateSystem, onAddSystem, onDeleteS
 
       {/* Edit Dialog */}
       <Dialog open={!!selectedSystem} onOpenChange={(open) => !open && setSelectedSystem(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-3">
-              <span className="text-2xl">{selectedSystem?.icon}</span>
+        <DialogContent className="sm:max-w-xs max-h-[90vh] flex flex-col overflow-hidden p-4 gap-3 [&>button]:shrink-0">
+          <DialogHeader className="shrink-0">
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <span className="text-xl">{selectedSystem?.icon}</span>
               {selectedSystem?.name}
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-6 py-4">
+          <div className="overflow-y-auto min-h-0 flex-1 -mx-1 px-1 space-y-4 py-1">
             {/* Content Type Selection */}
             <div className="space-y-3">
               <Label>Content Types</Label>
@@ -498,13 +498,13 @@ export function SystemsTracker({ systems, onUpdateSystem, onAddSystem, onDeleteS
             </div>
           </div>
 
-          <div className="flex gap-2">
-            <Button onClick={handleSave} className="flex-1">
-              <Save className="w-4 h-4 mr-2" />
+          <div className="flex gap-2 shrink-0 pt-1 border-t border-border">
+            <Button onClick={handleSave} className="flex-1" size="sm">
+              <Save className="w-3.5 h-3.5 mr-1.5" />
               Save Progress
             </Button>
-            <Button variant="destructive" size="icon" onClick={handleDelete}>
-              <Trash2 className="w-4 h-4" />
+            <Button variant="destructive" size="icon" className="h-8 w-8" onClick={handleDelete}>
+              <Trash2 className="w-3.5 h-3.5" />
             </Button>
           </div>
         </DialogContent>
