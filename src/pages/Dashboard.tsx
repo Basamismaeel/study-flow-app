@@ -1,10 +1,12 @@
 import { useMemo, useRef, useState, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, BookOpen, FileQuestion, Target, ChevronDown, Upload, X, Lock, Unlock, Plus, TrendingUp } from 'lucide-react';
-import { MedicalSystem } from '@/types';
+import { MedicalSystem, DailyTask } from '@/types';
 import { ProgressBar } from '@/components/ProgressBar';
 import { Button } from '@/components/ui/button';
 import { useUserLocalStorage } from '@/hooks/useUserLocalStorage';
+import { StudySessionBlock } from '@/components/StudySessionBlock';
+import { StudyGoalsCard } from '@/components/StudyGoalsCard';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, RadialBarChart, RadialBar, Legend } from 'recharts';
 import {
@@ -19,6 +21,7 @@ interface DashboardProps {
   systems: MedicalSystem[];
   selectedNextSystemId: string | null;
   onSelectNextSystem: (id: string) => void;
+  dailyTasks?: DailyTask[];
 }
 
 interface ImagePosition {
@@ -26,7 +29,7 @@ interface ImagePosition {
   y: number;
 }
 
-export function Dashboard({ systems, selectedNextSystemId, onSelectNextSystem }: DashboardProps) {
+export function Dashboard({ systems, selectedNextSystemId, onSelectNextSystem, dailyTasks = [] }: DashboardProps) {
   const [dashboardImage, setDashboardImage] = useUserLocalStorage<string | null>('dashboard-image', null);
   const [imagePosition, setImagePosition] = useUserLocalStorage<ImagePosition>('dashboard-image-position', { x: 0, y: 0 });
   const [imageSize, setImageSize] = useUserLocalStorage<number>('dashboard-image-size', 200);
@@ -486,8 +489,58 @@ export function Dashboard({ systems, selectedNextSystemId, onSelectNextSystem }:
 
       {/* Welcome Section */}
       <div>
-        <h1 className="text-3xl font-semibold text-foreground mb-2">Bitch you better do your work — you gotta save lives</h1>
+        <h1 className="text-3xl font-semibold text-foreground mb-2">Your work matters — you're training to save lives</h1>
         <p className="text-muted-foreground">Track your progress and stay organized</p>
+      </div>
+
+      {/* Start Study Session — systems as subjects, Videos/Qbank/custom as tasks */}
+      <StudySessionBlock
+        subjects={systems.map((s) => ({ id: s.id, name: s.name }))}
+        tasks={systems.flatMap((s) => {
+          const list: { id: string; label: string; subjectId?: string }[] = [];
+          if (s.bootcamp.total > 0) list.push({ id: `bootcamp-${s.id}`, label: 'Videos', subjectId: s.id });
+          if (s.qbank.total > 0) list.push({ id: `qbank-${s.id}`, label: 'Qbank questions', subjectId: s.id });
+          (s.customTasks ?? []).forEach((t) => list.push({ id: t.id, label: t.label, subjectId: s.id }));
+          return list;
+        })}
+      />
+
+      {/* Study goals + Today — side by side on large screens */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6 items-start">
+        <StudyGoalsCard subjects={systems.map((s) => ({ id: s.id, name: s.name }))} />
+        <Link to="/daily" className="block min-w-0">
+          <div className="relative overflow-hidden rounded-lg border border-amber-200/60 dark:border-amber-900/40 bg-amber-50/80 dark:bg-amber-950/30 shadow-sm hover:shadow-md transition-shadow p-3.5 pr-8 lg:sticky lg:top-6">
+            <div className="absolute top-0 right-0 w-8 h-8 bg-amber-200/50 dark:bg-amber-800/30 rounded-bl-lg" aria-hidden />
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-800/80 dark:text-amber-200/80 mb-2">Today</p>
+            {(() => {
+              const pending = dailyTasks.filter((t) => !t.completed);
+              if (pending.length > 0) {
+                return (
+                  <ul className="space-y-1 text-sm text-foreground/90">
+                    {pending.slice(0, 4).map((task) => (
+                      <li key={task.id} className="truncate pl-3 border-l-2 border-amber-300/50 dark:border-amber-600/40">
+                        {task.text}
+                      </li>
+                    ))}
+                    {pending.length > 4 && (
+                      <li className="text-xs text-muted-foreground pl-3 border-l-2 border-transparent">
+                        +{pending.length - 4} more
+                      </li>
+                    )}
+                  </ul>
+                );
+              }
+              return (
+                <p className="text-xs text-muted-foreground italic">
+                  {dailyTasks.length > 0 ? 'All done for today' : 'Nothing on the list yet'}
+                </p>
+              );
+            })()}
+            <span className="inline-flex items-center gap-0.5 mt-2 text-[10px] font-medium text-amber-700/70 dark:text-amber-300/70">
+              Daily tasks <ArrowRight className="w-3 h-3" />
+            </span>
+          </div>
+        </Link>
       </div>
 
       {/* Progress Visualization */}

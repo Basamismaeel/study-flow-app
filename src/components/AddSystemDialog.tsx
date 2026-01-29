@@ -46,6 +46,7 @@ export function AddSystemDialog({ onAddSystem }: AddSystemDialogProps) {
       icon,
       bootcamp: { completed: 0, total: includeBootcamp ? bootcampTotal : 0 },
       qbank: { completed: 0, total: includeQbank ? qbankTotal : 0 },
+      customTasks: [],
       status: 'not-started',
     });
 

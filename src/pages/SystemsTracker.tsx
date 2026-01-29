@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Minus, Plus, Save, Trash2 } from 'lucide-react';
+import { Minus, Plus, Save, Trash2, PlusCircle } from 'lucide-react';
+import type { SystemCustomTask } from '@/types';
 
 interface SystemsTrackerProps {
   systems: MedicalSystem[];
@@ -26,6 +27,8 @@ export function SystemsTracker({ systems, onUpdateSystem, onAddSystem, onDeleteS
   });
   const [includeBootcamp, setIncludeBootcamp] = useState(true);
   const [includeQbank, setIncludeQbank] = useState(true);
+  const [editCustomTasks, setEditCustomTasks] = useState<SystemCustomTask[]>([]);
+  const [newCustomTaskLabel, setNewCustomTaskLabel] = useState('');
 
   const openEditDialog = (system: MedicalSystem) => {
     setSelectedSystem(system);
@@ -39,6 +42,19 @@ export function SystemsTracker({ systems, onUpdateSystem, onAddSystem, onDeleteS
       qbankCompleted: system.qbank.completed,
       qbankTotal: system.qbank.total,
     });
+    setEditCustomTasks(system.customTasks ?? []);
+    setNewCustomTaskLabel('');
+  };
+
+  const addCustomTask = () => {
+    const label = newCustomTaskLabel.trim();
+    if (!label) return;
+    setEditCustomTasks((prev) => [...prev, { id: crypto.randomUUID(), label }]);
+    setNewCustomTaskLabel('');
+  };
+
+  const removeCustomTask = (id: string) => {
+    setEditCustomTasks((prev) => prev.filter((t) => t.id !== id));
   };
 
   const handleSave = () => {
@@ -67,6 +83,7 @@ export function SystemsTracker({ systems, onUpdateSystem, onAddSystem, onDeleteS
     onUpdateSystem(selectedSystem.id, {
       bootcamp: { completed: bootcampCompleted, total: bootcampTotal },
       qbank: { completed: qbankCompleted, total: qbankTotal },
+      customTasks: editCustomTasks,
       status,
     });
 
@@ -441,6 +458,44 @@ export function SystemsTracker({ systems, onUpdateSystem, onAddSystem, onDeleteS
               <p className="text-xs text-muted-foreground mt-2">Use +/- buttons to adjust by 10</p>
               </div>
             )}
+
+            {/* Custom tasks — user can add task types to this system (e.g. Anki, Notes) */}
+            <div>
+              <Label className="mb-2 block">Custom tasks</Label>
+              <p className="text-xs text-muted-foreground mb-2">
+                Add task types for this system (e.g. Anki deck, Notes). They will appear when starting a study session.
+              </p>
+              <ul className="space-y-1.5 mb-2">
+                {editCustomTasks.map((t) => (
+                  <li key={t.id} className="flex items-center gap-2 py-1.5 px-2 rounded-md border border-border bg-muted/30">
+                    <span className="text-sm font-medium flex-1">{t.label}</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                      onClick={() => removeCustomTask(t.id)}
+                      aria-label={`Remove ${t.label}`}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="e.g. Anki deck, Notes"
+                  value={newCustomTaskLabel}
+                  onChange={(e) => setNewCustomTaskLabel(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addCustomTask())}
+                  className="flex-1"
+                />
+                <Button type="button" variant="outline" size="sm" onClick={addCustomTask} className="gap-1">
+                  <PlusCircle className="h-4 w-4" />
+                  Add
+                </Button>
+              </div>
+            </div>
           </div>
 
           <div className="flex gap-2">

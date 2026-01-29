@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,13 +8,17 @@ import { Loader2 } from 'lucide-react';
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { signIn, signUp } = useAuth();
+  const { user, signIn, signUp } = useAuth();
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  if (user) {
+    return <Navigate to={user.major ? '/' : '/select-major'} replace />;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,7 +50,8 @@ export function LoginPage() {
     if (result.error) {
       setError(result.error);
     } else {
-      navigate('/', { replace: true });
+      // New sign-ups have no major; go straight to major selection to avoid blank/redirect race
+      navigate(isSignUp ? '/select-major' : '/', { replace: true });
     }
   };
 

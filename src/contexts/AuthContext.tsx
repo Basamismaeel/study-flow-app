@@ -10,6 +10,8 @@ import {
 export interface AuthUser {
   id: string;
   email: string;
+  /** Selected major; null until user completes major selection. Medicine = special locked case. */
+  major: string | null;
 }
 
 interface AuthContextType {
@@ -18,6 +20,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signUp: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
+  setMajor: (major: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -33,7 +36,9 @@ function hashPassword(password: string): string {
   return (h >>> 0).toString(36);
 }
 
-function getUsers(): Record<string, { id: string; passwordHash: string }> {
+type UserRecord = { id: string; passwordHash: string; major?: string | null };
+
+function getUsers(): Record<string, UserRecord> {
   try {
     const raw = window.localStorage.getItem(USERS_KEY);
     return raw ? JSON.parse(raw) : {};
@@ -42,14 +47,14 @@ function getUsers(): Record<string, { id: string; passwordHash: string }> {
   }
 }
 
-function setUsers(users: Record<string, { id: string; passwordHash: string }>) {
+function setUsers(users: Record<string, UserRecord>) {
   window.localStorage.setItem(USERS_KEY, JSON.stringify(users));
 }
 
 function getCurrentUser(): AuthUser | null {
   try {
     const raw = window.localStorage.getItem(CURRENT_KEY);
-    return raw ? JSON.parse(raw) : null;
+    return parseStoredUser(raw);
   } catch {
     return null;
   }
@@ -63,12 +68,37 @@ function setCurrentUser(user: AuthUser | null) {
   }
 }
 
+/** Parse stored user; ensure major field exists (legacy users get null). */
+function parseStoredUser(raw: string | null): AuthUser | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const id = typeof parsed.id === 'string' ? parsed.id : '';
+    const email = typeof parsed.email === 'string' ? parsed.email : '';
+    if (!id || !email) return null;
+    const major = typeof parsed.major === 'string' ? parsed.major : (parsed.major === null ? null : null);
+    return { id, email, major: major ?? null };
+  } catch {
+    return null;
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setUser(getCurrentUser());
+    const current = getCurrentUser();
+    if (current) {
+      const users = getUsers();
+      const record = users[current.email];
+      const major = record?.major ?? current.major ?? null;
+      const synced: AuthUser = { ...current, major };
+      if (major !== current.major) setCurrentUser(synced);
+      setUser(synced);
+    } else {
+      setUser(null);
+    }
     setLoading(false);
   }, []);
 
@@ -79,7 +109,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const record = users[normalized];
       if (!record) return { error: 'No account with this email.' };
       if (record.passwordHash !== hashPassword(password)) return { error: 'Wrong password.' };
-      const authUser: AuthUser = { id: record.id, email: normalized };
+      const major = record.major ?? null;
+      const authUser: AuthUser = { id: record.id, email: normalized, major };
       setCurrentUser(authUser);
       setUser(authUser);
       return { error: null };
@@ -99,7 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const id = crypto.randomUUID();
       users[normalized] = { id, passwordHash: hashPassword(password) };
       setUsers(users);
-      const authUser: AuthUser = { id, email: normalized };
+      const authUser: AuthUser = { id, email: normalized, major: null };
       setCurrentUser(authUser);
       setUser(authUser);
       return { error: null };
@@ -112,8 +143,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
+  const setMajor = useCallback((major: string) => {
+    const value = major.trim();
+    setUser((prev) => {
+      if (!prev) return prev;
+      const newMajor = (value || prev.major) ?? null;
+      const updated: AuthUser = { ...prev, major: newMajor };
+      setCurrentUser(updated);
+      const users = getUsers();
+      const record = users[prev.email];
+      if (record) {
+        users[prev.email] = { ...record, major: newMajor };
+        setUsers(users);
+      }
+      return updated;
+    });
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, setMajor }}>
       {children}
     </AuthContext.Provider>
   );

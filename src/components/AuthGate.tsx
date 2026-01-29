@@ -9,7 +9,6 @@ interface AuthGateProps {
 export function AuthGate({ children }: AuthGateProps) {
   const { loading } = useAuth();
 
-  // Only show full-screen loader briefly; then always show app (guest or logged in)
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">

@@ -1,3 +1,9 @@
+/** User-added task type for a system (e.g. "Anki deck", "Notes"). */
+export interface SystemCustomTask {
+  id: string;
+  label: string;
+}
+
 export interface MedicalSystem {
   id: string;
   name: string;
@@ -10,6 +16,8 @@ export interface MedicalSystem {
     completed: number;
     total: number;
   };
+  /** User-defined task types for this system (e.g. Anki, notes). */
+  customTasks?: SystemCustomTask[];
   status: 'not-started' | 'in-progress' | 'completed';
 }
 
@@ -117,4 +125,71 @@ export interface CalendarEvent {
   content: string;
   createdAt: Date;
   updatedAt: Date;
+}
+
+// --- Non-Medicine (generic dashboard): user-defined subjects & tasks ---
+
+/** One customizable tracking item (e.g. Videos 10/45, Chapters 3/12). */
+export interface SubjectTrackingItem {
+  id: string;
+  label: string;
+  completed: number;
+  total: number;
+}
+
+/** User-defined subject with same functions as Medicine systems but customizable tracking. */
+export interface Subject {
+  id: string;
+  name: string;
+  icon: string;
+  tracking: SubjectTrackingItem[];
+  status: 'not-started' | 'in-progress' | 'completed';
+}
+
+/** User-defined task within a subject. Title and completion only. */
+export interface GenericTask {
+  id: string;
+  subjectId: string;
+  title: string;
+  completed: boolean;
+}
+
+/** Compute subject status from tracking items. */
+export function subjectStatus(tracking: SubjectTrackingItem[]): Subject['status'] {
+  const withTotal = tracking.filter((t) => t.total > 0);
+  if (withTotal.length === 0) return 'not-started';
+  const allComplete = withTotal.every((t) => t.completed === t.total);
+  const anyStarted = withTotal.some((t) => t.completed > 0);
+  if (allComplete) return 'completed';
+  if (anyStarted) return 'in-progress';
+  return 'not-started';
+}
+
+// --- Study session tracking & planning (no AI) ---
+
+/** A single logged study session. */
+export interface StudySession {
+  id: string;
+  subjectId: string | null;
+  subjectName: string | null;
+  taskId: string | null;
+  taskLabel: string | null;
+  startTime: string; // ISO
+  endTime: string;   // ISO
+  durationMinutes: number;
+}
+
+/** Weekly reflection (3 prompts). */
+export interface WeeklyReflection {
+  weekKey: string;   // e.g. "2025-W29"
+  whatWentWell: string;
+  whatWasChallenging: string;
+  whatWillChange: string;
+  savedAt: string;   // ISO
+}
+
+/** Study goals: weekly overall + optional per-subject hours. */
+export interface StudyGoals {
+  weeklyHours: number;
+  subjectHours: Record<string, number>;
 }

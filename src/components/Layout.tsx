@@ -1,43 +1,152 @@
-import { ReactNode } from 'react';
+import { ReactNode, useMemo, useState } from 'react';
 import { NavLink, useLocation, Link } from 'react-router-dom';
-import { LayoutDashboard, ListTodo, Clock, BookOpen, Sun, Moon, CalendarDays, LogOut, LogIn, Languages, FileText } from 'lucide-react';
+import { LayoutDashboard, ListTodo, Clock, BookOpen, Sun, Moon, CalendarDays, LogOut, LogIn, Languages, FileText, Target, Flame, Menu, Settings2, Square } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { useTimer } from '@/contexts/TimerContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useActiveStudySession } from '@/contexts/ActiveStudySessionContext';
 import { TimerNotification } from '@/components/TimerNotification';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { cn } from '@/lib/utils';
+
+const MAX_PINNED = 5;
+const NAV_PINNED_KEY_PREFIX = 'study-flow-nav-pinned-';
 
 interface LayoutProps {
   children: ReactNode;
 }
 
-const navItems = [
+type NavItem = { to: string; icon: typeof LayoutDashboard; label: string };
+
+const medicineNavItems: NavItem[] = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/systems', icon: BookOpen, label: 'Systems' },
   { to: '/planner', icon: CalendarDays, label: 'Planner' },
   { to: '/languages', icon: Languages, label: 'Languages' },
   { to: '/daily', icon: ListTodo, label: 'Daily Tasks' },
+  { to: '/activity', icon: Flame, label: 'Activity' },
   { to: '/notebook', icon: FileText, label: 'Notebook' },
   { to: '/timer', icon: Clock, label: 'Timer' },
 ];
+
+const genericNavItems: NavItem[] = [
+  { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/subjects', icon: BookOpen, label: 'Subjects' },
+  { to: '/daily', icon: ListTodo, label: 'Daily Tasks' },
+  { to: '/activity', icon: Flame, label: 'Activity' },
+  { to: '/goals', icon: Target, label: 'Goals' },
+  { to: '/notebook', icon: FileText, label: 'Notebook' },
+  { to: '/timer', icon: Clock, label: 'Timer' },
+];
+
+function getDefaultPinned(items: NavItem[]): string[] {
+  return items.slice(0, MAX_PINNED).map((i) => i.to);
+}
+
+function normalizePinned(stored: string[], items: NavItem[]): string[] {
+  const set = new Set(items.map((i) => i.to));
+  const valid = stored.filter((p) => set.has(p)).slice(0, MAX_PINNED);
+  if (valid.length >= MAX_PINNED) return valid;
+  for (const item of items) {
+    if (valid.length >= MAX_PINNED) break;
+    if (!valid.includes(item.to)) valid.push(item.to);
+  }
+  return valid;
+}
+
+function ActiveStudySessionBar() {
+  const { active, elapsedSeconds, endSession } = useActiveStudySession();
+  if (!active) return null;
+  const m = Math.floor(elapsedSeconds / 60);
+  const s = elapsedSeconds % 60;
+  const timeStr = `${m}:${s.toString().padStart(2, '0')}`;
+  return (
+    <div className="bg-primary/10 border-b border-primary/20">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center">
+            <span className="text-sm font-mono tabular-nums">{timeStr}</span>
+          </div>
+          <div>
+            <p className="font-medium text-foreground text-sm">Study session in progress</p>
+            <p className="text-xs text-muted-foreground">
+              {active.subjectName || 'No subject'}
+              {active.taskLabel ? ` · ${active.taskLabel}` : ''}
+            </p>
+          </div>
+        </div>
+        <Button onClick={endSession} variant="destructive" size="sm">
+          <Square className="w-4 h-4 mr-2" />
+          End session
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 export function Layout({ children }: LayoutProps) {
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const { timeLeft, isRunning } = useTimer();
   const { user, signOut } = useAuth();
+  const isMedicine = user?.major?.toLowerCase() === 'medicine';
+  const navItems = isMedicine ? medicineNavItems : genericNavItems;
+  const majorKey = isMedicine ? 'medicine' : 'generic';
+  const [storedPinned, setStoredPinned] = useLocalStorage<string[]>(
+    NAV_PINNED_KEY_PREFIX + majorKey,
+    getDefaultPinned(navItems)
+  );
+  const pinned = useMemo(() => normalizePinned(storedPinned, navItems), [storedPinned, navItems]);
+  const pinnedItems = useMemo(
+    () => pinned.map((path) => navItems.find((i) => i.to === path)).filter(Boolean) as NavItem[],
+    [pinned, navItems]
+  );
+  const overflowItems = useMemo(
+    () => navItems.filter((i) => !pinned.includes(i.to)),
+    [navItems, pinned]
+  );
+  const [customizeOpen, setCustomizeOpen] = useState(false);
+  const [customizeSelected, setCustomizeSelected] = useState<string[]>(() => pinned);
 
   const formatMiniTimer = (seconds: number) => {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
     return `${m}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const openCustomize = () => {
+    setCustomizeSelected([...pinned]);
+    setCustomizeOpen(true);
+  };
+
+  const toggleCustomizeItem = (path: string) => {
+    setCustomizeSelected((prev) => {
+      if (prev.includes(path)) return prev.filter((p) => p !== path);
+      if (prev.length >= MAX_PINNED) return [...prev.slice(1), path];
+      return [...prev, path];
+    });
+  };
+
+  const saveCustomize = () => {
+    setStoredPinned(customizeSelected.length <= MAX_PINNED ? customizeSelected : customizeSelected.slice(0, MAX_PINNED));
+    setCustomizeOpen(false);
   };
 
   return (
@@ -71,9 +180,9 @@ export function Layout({ children }: LayoutProps) {
               <span className="font-semibold text-lg text-foreground hidden sm:block">Tracker</span>
             </div>
 
-            {/* Navigation */}
+            {/* Top 5 nav + overflow menu */}
             <nav className="flex items-center gap-1">
-              {navItems.map((item) => {
+              {pinnedItems.map((item) => {
                 const isActive = location.pathname === item.to;
                 const showTimer = item.to === '/timer' && isRunning && location.pathname !== '/timer';
                 return (
@@ -97,6 +206,31 @@ export function Layout({ children }: LayoutProps) {
                   </NavLink>
                 );
               })}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground" aria-label="More pages">
+                    <Menu className="w-5 h-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="min-w-[180px]">
+                  {overflowItems.map((item) => {
+                    const isActive = location.pathname === item.to;
+                    return (
+                      <DropdownMenuItem key={item.to} asChild>
+                        <NavLink to={item.to} className={cn('flex items-center gap-2', isActive && 'bg-accent text-accent-foreground')}>
+                          <item.icon className="w-4 h-4" />
+                          {item.label}
+                        </NavLink>
+                      </DropdownMenuItem>
+                    );
+                  })}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={openCustomize} className="gap-2">
+                    <Settings2 className="w-4 h-4" />
+                    Customize top 5
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </nav>
 
             {/* User menu & Theme */}
@@ -139,10 +273,53 @@ export function Layout({ children }: LayoutProps) {
         </div>
       </header>
 
+      {/* Active study session bar — visible on every page */}
+      <ActiveStudySessionBar />
+
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {children}
       </main>
+
+      {/* Customize top 5 dialog */}
+      <Dialog open={customizeOpen} onOpenChange={setCustomizeOpen}>
+        <DialogContent className="sm:max-w-sm p-4 gap-3">
+          <DialogHeader className="space-y-1">
+            <DialogTitle className="text-base">Choose your top 5</DialogTitle>
+            <DialogDescription className="text-xs">
+              Select up to 5 pages for the top bar. Rest go in the menu (☰).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-1.5 py-1">
+            {navItems.map((item) => (
+              <label
+                key={item.to}
+                className={cn(
+                  'flex items-center gap-2 rounded-md border p-2 cursor-pointer transition-colors text-sm',
+                  customizeSelected.includes(item.to) ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/50'
+                )}
+              >
+                <Checkbox
+                  checked={customizeSelected.includes(item.to)}
+                  onCheckedChange={() => toggleCustomizeItem(item.to)}
+                  className="h-3 w-3"
+                />
+                <item.icon className="w-3 h-3 text-muted-foreground shrink-0" />
+                <span className="font-medium">{item.label}</span>
+              </label>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {customizeSelected.length} of {MAX_PINNED} selected.
+          </p>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setCustomizeOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={saveCustomize}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
