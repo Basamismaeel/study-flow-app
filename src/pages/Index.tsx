@@ -1,7 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { MedicineIndex } from './MedicineIndex';
-import { GenericIndex } from './GenericIndex';
+import { MedicineIndex } from '@/pages/MedicineIndex';
+import { GenericIndex } from '@/pages/GenericIndex';
 
 const Index = () => {
   const { user } = useAuth();
