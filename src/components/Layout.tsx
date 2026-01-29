@@ -42,6 +42,7 @@ const medicineNavItems: NavItem[] = [
   { to: '/languages', icon: Languages, label: 'Languages' },
   { to: '/daily', icon: ListTodo, label: 'Daily Tasks' },
   { to: '/activity', icon: Flame, label: 'Activity' },
+  { to: '/goals', icon: Target, label: 'Goals' },
   { to: '/notebook', icon: FileText, label: 'Notebook' },
   { to: '/timer', icon: Clock, label: 'Timer' },
 ];
