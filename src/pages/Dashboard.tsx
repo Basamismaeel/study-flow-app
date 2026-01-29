@@ -492,7 +492,7 @@ export function Dashboard({ systems, selectedNextSystemId, onSelectNextSystem, d
       {/* Welcome Section */}
       <div>
         <p className="text-lg font-medium text-muted-foreground mb-1">
-          Hi{user?.email ? `, ${user.email.split('@')[0].replace(/^./, (c) => c.toUpperCase())}` : ''}
+          Hello{user?.email ? `, ${user.email.split('@')[0].replace(/^./, (c) => c.toUpperCase())}` : ''}
         </p>
         <h1 className="text-3xl font-semibold text-foreground mb-2">Your work matters — you're training to save lives</h1>
         <p className="text-muted-foreground">Track your progress and stay organized</p>
