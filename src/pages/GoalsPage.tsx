@@ -26,6 +26,7 @@ import {
 import { Plus, Target, CheckCircle2, Circle, Clock, Trash2, Edit2 } from 'lucide-react';
 import { useUserLocalStorage } from '@/hooks/useUserLocalStorage';
 import { cn } from '@/lib/utils';
+import { safeFormat, safeParseDate } from '@/lib/dateUtils';
 
 export function GoalsPage() {
   const [goals, setGoals] = useUserLocalStorage<Goal[]>('yearly-goals', []);
@@ -368,7 +369,7 @@ export function GoalsPage() {
                     </div>
                     <div className="flex items-center justify-between mt-4">
                       <span className="text-sm text-muted-foreground">
-                        Completed: {goal.completedAt?.toLocaleDateString() || 'N/A'}
+                        Completed: {goal.completedAt ? safeFormat(safeParseDate(goal.completedAt), 'MMM d, yyyy') : 'N/A'}
                       </span>
                       <div className="flex items-center gap-2">
                         <Button

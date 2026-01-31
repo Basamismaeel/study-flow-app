@@ -8,7 +8,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { safeFormat, safeParseDate } from '@/lib/dateUtils';
 
 interface StudyHeatmapProps {
   sessions: StudySession[];
@@ -57,7 +57,7 @@ export function StudyHeatmap({ sessions, onDayClick }: StudyHeatmapProps) {
       d.setDate(start.getDate() + col * DAYS_PER_WEEK);
       const m = d.getMonth();
       if (m !== lastMonth) {
-        monthLabels.push({ col, label: format(d, 'MMM') });
+        monthLabels.push({ col, label: safeFormat(d, 'MMM') });
         lastMonth = m;
       }
     }
@@ -141,7 +141,7 @@ export function StudyHeatmap({ sessions, onDayClick }: StudyHeatmapProps) {
                   );
                   const tooltip = (
                     <span className="text-xs">
-                      {format(new Date(cell.dateKey), 'MMM d, yyyy')}
+                      {safeFormat(safeParseDate(cell.dateKey), 'MMM d, yyyy')}
                       <br />
                       {cell.minutes > 0
                         ? `${formatExactStudyTime(cell.minutes)} studied`

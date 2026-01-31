@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { StudySession } from '@/types';
-import { format } from 'date-fns';
+import { safeFormat, safeParseDate } from '@/lib/dateUtils';
 import { formatExactStudyTime } from '@/lib/sessionUtils';
 import { Clock, BookOpen, BarChart3, Flame } from 'lucide-react';
 
@@ -63,7 +63,7 @@ export function ActivityHeatmapPage() {
           <DialogHeader>
             <DialogTitle className="text-base">
               {selectedDay
-                ? format(new Date(selectedDay.dateKey), 'EEE, MMM d, yyyy')
+                ? safeFormat(safeParseDate(selectedDay.dateKey), 'EEE, MMM d, yyyy')
                 : ''}
             </DialogTitle>
           </DialogHeader>

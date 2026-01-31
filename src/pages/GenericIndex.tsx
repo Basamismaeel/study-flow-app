@@ -1,6 +1,5 @@
 /**
- * Non-medicine majors: generic dashboard with user-defined subjects and tasks.
- * Subjects have same functions as Medicine systems but fully customizable.
+ * Non-medicine majors: courses with daily tasks. Coverage shows daily completion.
  */
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useUserLocalStorage } from '@/hooks/useUserLocalStorage';
@@ -12,14 +11,15 @@ import { TimerPage } from './TimerPage';
 import { GoalsPage } from './GoalsPage';
 import { NotebookPage } from './NotebookPage';
 import { ActivityHeatmapPage } from './ActivityHeatmapPage';
-import { Subject, GenericTask, DailyTask, subjectStatus } from '@/types';
+import { Subject, DailyTask, subjectStatus, CourseDailyCompletion } from '@/types';
 
-const defaultSubjectTasks: GenericTask[] = [];
 const defaultDailyTasks: DailyTask[] = [];
+const defaultCompletions: CourseDailyCompletion[] = [];
 
 function normalizeSubject(s: Subject | Record<string, unknown>): Subject {
   if ('icon' in s && 'tracking' in s && 'status' in s && Array.isArray((s as Subject).tracking)) {
-    return s as Subject;
+    const sub = s as Subject;
+    return { ...sub, dailyTasks: sub.dailyTasks ?? [] };
   }
   const sub = s as { id: string; name: string };
   return {
@@ -28,6 +28,7 @@ function normalizeSubject(s: Subject | Record<string, unknown>): Subject {
     icon: '📚',
     tracking: [],
     status: 'not-started',
+    dailyTasks: [],
   };
 }
 
@@ -38,32 +39,44 @@ export function GenericIndex() {
     'generic-subjects',
     defaultSubjects
   );
-  const [subjectTasks, setSubjectTasks] = useUserLocalStorage<GenericTask[]>(
-    'generic-subject-tasks',
-    defaultSubjectTasks
+  const [courseDailyCompletionsRaw, setCourseDailyCompletions] = useUserLocalStorage<CourseDailyCompletion[]>(
+    'generic-course-daily-completions',
+    defaultCompletions
   );
-  const [dailyTasks, setDailyTasks] = useUserLocalStorage<DailyTask[]>(
+  const courseDailyCompletions = Array.isArray(courseDailyCompletionsRaw)
+    ? courseDailyCompletionsRaw
+    : defaultCompletions;
+
+  const [dailyTasksRaw, setDailyTasks] = useUserLocalStorage<DailyTask[]>(
     'generic-daily-tasks',
     defaultDailyTasks
   );
+  const dailyTasks = Array.isArray(dailyTasksRaw) ? dailyTasksRaw : defaultDailyTasks;
   const [selectedNextSubjectId, setSelectedNextSubjectId] = useUserLocalStorage<string | null>(
     'generic-next-subject',
     null
   );
 
-  const normalizedSubjects = subjects.map(normalizeSubject);
+  const normalizedSubjects = Array.isArray(subjects)
+    ? subjects.map(normalizeSubject)
+    : defaultSubjects;
 
   const handleAddSubject = (subject: Omit<Subject, 'id'>) => {
     const newSubject: Subject = {
       ...subject,
       id: crypto.randomUUID(),
+      dailyTasks: [],
     };
-    setSubjects((prev) => [...prev.map(normalizeSubject), newSubject]);
+    setSubjects((prev) => {
+      const list = Array.isArray(prev) ? prev : [];
+      return [...list.map(normalizeSubject), newSubject];
+    });
   };
 
   const handleUpdateSubject = (id: string, updates: Partial<Subject>) => {
-    setSubjects((prev) =>
-      prev.map((s) => {
+    setSubjects((prev) => {
+      const list = Array.isArray(prev) ? prev : [];
+      return list.map((s) => {
         const sub = normalizeSubject(s);
         if (sub.id !== id) return sub;
         const merged = { ...sub, ...updates };
@@ -71,60 +84,91 @@ export function GenericIndex() {
           merged.status = subjectStatus(updates.tracking);
         }
         return merged;
-      })
-    );
+      });
+    });
   };
 
   const handleDeleteSubject = (id: string) => {
-    setSubjects((prev) => prev.filter((s) => normalizeSubject(s).id !== id));
-    setSubjectTasks((prev) => prev.filter((t) => t.subjectId !== id));
+    const deletedSub = (Array.isArray(subjects) ? subjects : []).find((s) => s.id === id);
+    const taskIds = new Set((deletedSub?.dailyTasks ?? []).map((t) => t.id));
+    setSubjects((prev) => {
+      const list = Array.isArray(prev) ? prev : [];
+      return list.filter((s) => normalizeSubject(s).id !== id);
+    });
+    setCourseDailyCompletions((prev) => {
+      const list = Array.isArray(prev) ? prev : [];
+      return list.filter((c) => !taskIds.has(c.taskId));
+    });
     if (selectedNextSubjectId === id) setSelectedNextSubjectId(null);
   };
 
-  const handleAddTask = (subjectId: string, title: string) => {
-    const newTask: GenericTask = {
-      id: crypto.randomUUID(),
-      subjectId,
-      title,
-      completed: false,
-    };
-    setSubjectTasks((prev) => [...prev, newTask]);
+  const handleAddCourseDailyTask = (courseId: string, text: string) => {
+    const newTask = { id: crypto.randomUUID(), text };
+    setSubjects((prev) => {
+      const list = Array.isArray(prev) ? prev : [];
+      return list.map((s) =>
+        s.id === courseId
+          ? { ...s, dailyTasks: [...(s.dailyTasks ?? []), newTask] }
+          : s
+      );
+    });
   };
 
-  const handleToggleSubjectTask = (id: string) => {
-    setSubjectTasks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t))
-    );
+  const handleRemoveCourseDailyTask = (courseId: string, taskId: string) => {
+    setSubjects((prev) => {
+      const list = Array.isArray(prev) ? prev : [];
+      return list.map((s) =>
+        s.id === courseId
+          ? { ...s, dailyTasks: (s.dailyTasks ?? []).filter((t) => t.id !== taskId) }
+          : s
+      );
+    });
+    setCourseDailyCompletions((prev) => {
+      const list = Array.isArray(prev) ? prev : [];
+      return list.filter((c) => c.taskId !== taskId);
+    });
   };
 
-  const handleDeleteSubjectTask = (id: string) => {
-    setSubjectTasks((prev) => prev.filter((t) => t.id !== id));
+  const handleToggleCourseDailyCompletion = (taskId: string, date: string, completed: boolean) => {
+    setCourseDailyCompletions((prev) => {
+      const list = Array.isArray(prev) ? prev : [];
+      const rest = list.filter((c) => !(c.taskId === taskId && c.date === date));
+      return [...rest, { taskId, date, completed }];
+    });
   };
 
-  const handleAddDailyTask = (text: string) => {
+  const getCourseDailyCompletion = (taskId: string, date: string): boolean => {
+    const c = courseDailyCompletions.find((x) => x.taskId === taskId && x.date === date);
+    return c?.completed ?? false;
+  };
+
+  const handleAddDailyTask = (text: string, date?: string) => {
     const newTask: DailyTask = {
       id: crypto.randomUUID(),
       text,
       completed: false,
       createdAt: new Date(),
+      date: date ?? new Date().toISOString().slice(0, 10),
     };
-    setDailyTasks((prev) => [newTask, ...prev]);
+    setDailyTasks((prev) => [newTask, ...(Array.isArray(prev) ? prev : [])]);
   };
 
   const handleToggleDailyTask = (id: string) => {
-    setDailyTasks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t))
-    );
+    setDailyTasks((prev) => {
+      const list = Array.isArray(prev) ? prev : [];
+      return list.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t));
+    });
   };
 
   const handleDeleteDailyTask = (id: string) => {
-    setDailyTasks((prev) => prev.filter((t) => t.id !== id));
+    setDailyTasks((prev) => (Array.isArray(prev) ? prev : []).filter((t) => t.id !== id));
   };
 
   const handleUpdateDailyTask = (id: string, text: string) => {
-    setDailyTasks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, text } : t))
-    );
+    setDailyTasks((prev) => {
+      const list = Array.isArray(prev) ? prev : [];
+      return list.map((t) => (t.id === id ? { ...t, text } : t));
+    });
   };
 
   const handleClearAllDailyTasks = () => setDailyTasks([]);
@@ -136,10 +180,14 @@ export function GenericIndex() {
         element={
           <GenericDashboard
             subjects={normalizedSubjects}
-            subjectTasks={subjectTasks}
+            courseDailyCompletions={courseDailyCompletions}
             dailyTasks={dailyTasks}
             selectedNextSubjectId={selectedNextSubjectId}
             onSelectNextSubject={setSelectedNextSubjectId}
+            onAddCourseDailyTask={handleAddCourseDailyTask}
+            onRemoveCourseDailyTask={handleRemoveCourseDailyTask}
+            getCourseDailyCompletion={getCourseDailyCompletion}
+            onToggleCourseDailyCompletion={handleToggleCourseDailyCompletion}
           />
         }
       />
@@ -148,10 +196,14 @@ export function GenericIndex() {
         element={
           <SubjectsPage
             subjects={normalizedSubjects}
-            subjectTasks={subjectTasks}
+            courseDailyCompletions={courseDailyCompletions}
             onAddSubject={handleAddSubject}
             onUpdateSubject={handleUpdateSubject}
             onDeleteSubject={handleDeleteSubject}
+            onAddCourseDailyTask={handleAddCourseDailyTask}
+            onRemoveCourseDailyTask={handleRemoveCourseDailyTask}
+            getCourseDailyCompletion={getCourseDailyCompletion}
+            onToggleCourseDailyCompletion={handleToggleCourseDailyCompletion}
           />
         }
       />
@@ -160,10 +212,11 @@ export function GenericIndex() {
         element={
           <SubjectDetailPage
             subjects={normalizedSubjects}
-            subjectTasks={subjectTasks}
-            onAddTask={handleAddTask}
-            onToggleTask={handleToggleSubjectTask}
-            onDeleteTask={handleDeleteSubjectTask}
+            courseDailyCompletions={courseDailyCompletions}
+            onAddCourseDailyTask={handleAddCourseDailyTask}
+            onRemoveCourseDailyTask={handleRemoveCourseDailyTask}
+            onToggleCourseDailyCompletion={handleToggleCourseDailyCompletion}
+            getCourseDailyCompletion={getCourseDailyCompletion}
           />
         }
       />
@@ -177,6 +230,7 @@ export function GenericIndex() {
             onDeleteTask={handleDeleteDailyTask}
             onUpdateTask={handleUpdateDailyTask}
             onClearAllTasks={handleClearAllDailyTasks}
+            allowOtherDays={true}
           />
         }
       />

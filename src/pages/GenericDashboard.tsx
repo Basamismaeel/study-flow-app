@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ChartContainer,
@@ -13,113 +13,124 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { BookOpen, ListTodo, TrendingUp, ArrowRight, ChevronDown } from 'lucide-react';
-import { Subject, GenericTask, DailyTask } from '@/types';
+import { Subject, DailyTask, CourseDailyCompletion } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { StudySessionBlock } from '@/components/StudySessionBlock';
 import { StudyGoalsCard } from '@/components/StudyGoalsCard';
+import { CourseCard } from '@/components/CourseCard';
+import { AddCourseDailyTasksDialog } from '@/components/AddCourseDailyTasksDialog';
+
+import { safeToDateString } from '@/lib/dateUtils';
 
 interface GenericDashboardProps {
   subjects: Subject[];
-  subjectTasks: GenericTask[];
+  courseDailyCompletions: CourseDailyCompletion[];
   dailyTasks: DailyTask[];
   selectedNextSubjectId: string | null;
   onSelectNextSubject: (id: string) => void;
+  onAddCourseDailyTask: (courseId: string, text: string) => void;
+  onRemoveCourseDailyTask: (courseId: string, taskId: string) => void;
+  getCourseDailyCompletion: (taskId: string, date: string) => boolean;
+  onToggleCourseDailyCompletion: (taskId: string, date: string, completed: boolean) => void;
 }
 
 export function GenericDashboard({
   subjects,
-  subjectTasks,
+  courseDailyCompletions,
   dailyTasks,
   selectedNextSubjectId,
   onSelectNextSubject,
+  onAddCourseDailyTask,
+  onRemoveCourseDailyTask,
+  getCourseDailyCompletion,
+  onToggleCourseDailyCompletion,
 }: GenericDashboardProps) {
-  const dailyCompleted = dailyTasks.filter((t) => t.completed).length;
-  const dailyTotal = dailyTasks.length;
+  const todayStr = safeToDateString(new Date());
+  const [courseForTasksDialog, setCourseForTasksDialog] = useState<Subject | null>(null);
+
+  const safeDailyTasks = Array.isArray(dailyTasks) ? dailyTasks : [];
+  const safeSubjects = Array.isArray(subjects) ? subjects : [];
+  const safeCompletions = Array.isArray(courseDailyCompletions) ? courseDailyCompletions : [];
+
+  // Global daily tasks for today (from Daily Tasks page)
+  const todayDailyTasks = safeDailyTasks.filter((t) => {
+    const d = t.date ?? (t.createdAt ? safeToDateString(t.createdAt, todayStr) : todayStr);
+    return d === todayStr;
+  });
+  const dailyCompleted = todayDailyTasks.filter((t) => t.completed).length;
+  const dailyTotal = todayDailyTasks.length;
   const dailyPercent =
     dailyTotal > 0 ? Math.round((dailyCompleted / dailyTotal) * 100) : 0;
 
-  const stats = useMemo(() => {
-    let totalItems = 0;
-    let completedItems = 0;
-    const perTracking: Record<string, { total: number; completed: number }> = {};
-    subjects.forEach((sub) => {
-      sub.tracking.forEach((t) => {
-        if (t.total > 0) {
-          totalItems += t.total;
-          completedItems += t.completed;
-          if (!perTracking[t.label]) {
-            perTracking[t.label] = { total: 0, completed: 0 };
-          }
-          perTracking[t.label].total += t.total;
-          perTracking[t.label].completed += t.completed;
-        }
+  // Coverage: only courses WITH daily tasks. Daily coverage = completed today / total.
+  const coursesWithDailyTasks = safeSubjects.filter((s) => (s.dailyTasks ?? []).length > 0);
+  const coverageStats = useMemo(() => {
+    let total = 0;
+    let completed = 0;
+    coursesWithDailyTasks.forEach((sub) => {
+      (sub.dailyTasks ?? []).forEach((task) => {
+        total += 1;
+        const c = safeCompletions.find(
+          (x) => x.taskId === task.id && x.date === todayStr && x.completed
+        );
+        if (c) completed += 1;
       });
     });
-    const overallPercent =
-      totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
-    const trackingLabels = Object.keys(perTracking);
-    const firstLabel = trackingLabels[0];
-    const firstStats = firstLabel ? perTracking[firstLabel] : null;
-    const firstPercent =
-      firstStats && firstStats.total > 0
-        ? Math.round((firstStats.completed / firstStats.total) * 100)
-        : 0;
-    return {
-      totalItems,
-      completedItems,
-      overallPercent,
-      firstLabel,
-      firstStats,
-      firstPercent,
-      perTracking,
-      trackingLabels,
-    };
-  }, [subjects]);
+    const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+    return { total, completed, percent };
+  }, [coursesWithDailyTasks, safeCompletions, todayStr]);
 
   const barChartData = useMemo(
     () =>
-      subjects.map((sub) => {
-        const withTotal = sub.tracking.filter((t) => t.total > 0);
-        if (withTotal.length === 0)
-          return {
-            name: sub.name,
-            fullName: sub.name,
-            progress: 0,
-            status: sub.status,
-          };
-        const avg =
-          withTotal.reduce(
-            (acc, t) => acc + (t.completed / t.total) * 100,
-            0
-          ) / withTotal.length;
+      coursesWithDailyTasks.map((sub) => {
+        const tasks = sub.dailyTasks ?? [];
+        const total = tasks.length;
+        const completed = tasks.filter((task) =>
+          safeCompletions.some(
+            (c) => c.taskId === task.id && c.date === todayStr && c.completed
+          )
+        ).length;
+        const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
         return {
           name: sub.name,
           fullName: sub.name,
-          progress: Math.round(avg),
-          status: sub.status,
+          progress,
+          completed,
+          total,
         };
       }),
-    [subjects]
+    [coursesWithDailyTasks, safeCompletions, todayStr]
+  );
+
+  const studySessionTasks = useMemo(
+    () =>
+      safeSubjects.flatMap((s) =>
+        (s.dailyTasks ?? []).map((t) => ({
+          id: t.id,
+          label: t.text,
+          subjectId: s.id,
+        }))
+      ),
+    [safeSubjects]
   );
 
   const nextSubject = useMemo(() => {
     if (selectedNextSubjectId) {
-      return subjects.find((s) => s.id === selectedNextSubjectId);
+      return safeSubjects.find((s) => s.id === selectedNextSubjectId);
     }
-    return (
-      subjects.find((s) => s.status !== 'completed') || subjects[0]
-    );
-  }, [subjects, selectedNextSubjectId]);
+    return safeSubjects[0];
+  }, [safeSubjects, selectedNextSubjectId]);
 
-  const incompleteSubjects = subjects.filter((s) => s.status !== 'completed');
-
-  const subjectProgress = subjects.map((sub) => {
-    const withTotal = sub.tracking.filter((t) => t.total > 0);
-    const completed = withTotal.reduce((a, t) => a + t.completed, 0);
-    const total = withTotal.reduce((a, t) => a + t.total, 0);
-    const percent =
-      total > 0 ? Math.round((completed / total) * 100) : 0;
+  const subjectProgress = safeSubjects.map((sub) => {
+    const tasks = sub.dailyTasks ?? [];
+    const total = tasks.length;
+    const completed = tasks.filter((task) =>
+      safeCompletions.some(
+        (c) => c.taskId === task.id && c.date === todayStr && c.completed
+      )
+    ).length;
+    const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
     return { subject: sub, completed, total, percent };
   });
 
@@ -130,18 +141,18 @@ export function GenericDashboard({
           Overview
         </h1>
         <p className="text-muted-foreground">
-          Track your progress across subjects and daily tasks
+          Track your progress across courses and daily tasks
         </p>
       </div>
 
       {/* Start Study Session */}
       <StudySessionBlock
-        subjects={subjects.map((s) => ({ id: s.id, name: s.name }))}
-        tasks={subjectTasks.map((t) => ({ id: t.id, label: t.title, subjectId: t.subjectId }))}
+        subjects={safeSubjects.map((s) => ({ id: s.id, name: s.name }))}
+        tasks={studySessionTasks}
       />
 
       {/* Weekly & subject goals */}
-      <StudyGoalsCard subjects={subjects.map((s) => ({ id: s.id, name: s.name }))} />
+      <StudyGoalsCard subjects={safeSubjects.map((s) => ({ id: s.id, name: s.name }))} />
 
       {/* Daily tasks summary */}
       <div className="glass-card p-6">
@@ -175,13 +186,13 @@ export function GenericDashboard({
           </h2>
         </div>
 
-        {subjects.length > 0 ? (
+        {safeSubjects.length > 0 && coursesWithDailyTasks.length > 0 ? (
           <>
             <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6 items-start">
-              {/* Overall donut */}
+              {/* Overall donut - daily coverage */}
               <div className="flex flex-col items-center">
                 <h3 className="text-sm font-medium text-muted-foreground mb-4 text-center">
-                  Overall Coverage
+                  Today&apos;s Coverage
                 </h3>
                 <ChartContainer
                   config={{
@@ -202,11 +213,11 @@ export function GenericDashboard({
                         data={[
                           {
                             name: 'Completed',
-                            value: stats.overallPercent,
+                            value: coverageStats.percent,
                           },
                           {
                             name: 'Remaining',
-                            value: 100 - stats.overallPercent,
+                            value: 100 - coverageStats.percent,
                           },
                         ]}
                         cx="50%"
@@ -229,7 +240,7 @@ export function GenericDashboard({
                         dominantBaseline="middle"
                         className="text-3xl font-bold fill-foreground"
                       >
-                        {stats.overallPercent}%
+                        {coverageStats.percent}%
                       </text>
                     </PieChart>
                   </ResponsiveContainer>
@@ -246,10 +257,10 @@ export function GenericDashboard({
                 </div>
               </div>
 
-              {/* Subjects bar chart */}
+              {/* Courses bar chart - only courses with daily tasks */}
               <div className="min-w-0">
                 <h3 className="text-sm font-medium text-muted-foreground mb-4 text-center">
-                  Subjects Coverage
+                  Daily Coverage by Course
                 </h3>
                 <ChartContainer
                   config={{
@@ -296,10 +307,10 @@ export function GenericDashboard({
                                 </div>
                                 <div className="text-sm">
                                   <span className="text-muted-foreground">
-                                    Overall:{' '}
+                                    Today:{' '}
                                   </span>
                                   <span className="font-medium">
-                                    {data.progress}%
+                                    {data.completed} / {data.total} tasks
                                   </span>
                                 </div>
                               </div>
@@ -320,69 +331,58 @@ export function GenericDashboard({
             </div>
 
             {/* Metrics breakdown */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 pt-6 border-t">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 pt-6 border-t">
               <div className="text-center">
                 <div className="text-2xl font-bold text-primary mb-1">
-                  {stats.overallPercent}%
+                  {coverageStats.percent}%
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  Overall Complete
+                  Today&apos;s Daily Coverage
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
-                  {stats.completedItems} / {stats.totalItems} items
+                  {coverageStats.completed} / {coverageStats.total} tasks done
                 </div>
               </div>
-              {stats.firstLabel && stats.firstStats && (
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-primary mb-1">
-                    {stats.firstPercent}%
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {stats.firstLabel}
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    {stats.firstStats.completed} / {stats.firstStats.total}
-                  </div>
-                </div>
-              )}
               <div className="text-center">
                 <div className="text-2xl font-bold text-primary mb-1">
-                  {subjects.filter((s) => s.status === 'completed').length} /{' '}
-                  {subjects.length}
+                  {coursesWithDailyTasks.length}
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  Subjects Completed
+                  Courses with daily tasks
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
-                  {subjects.length > 0
-                    ? Math.round(
-                        (subjects.filter((s) => s.status === 'completed')
-                          .length /
-                          subjects.length) *
-                          100
-                      )
-                    : 0}
-                  % coverage
+                  Only these appear in coverage
                 </div>
               </div>
             </div>
           </>
+        ) : safeSubjects.length > 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-50" />
+            <p className="font-medium text-foreground">No daily tasks yet</p>
+            <p className="text-sm">
+              Add daily tasks to your courses to see coverage here. Open a course and add what you want to finish each day.
+            </p>
+            <Link to="/subjects">
+              <Button className="mt-4">Go to courses</Button>
+            </Link>
+          </div>
         ) : (
           <div className="text-center py-8 text-muted-foreground">
             <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-50" />
-            <p className="font-medium text-foreground">No subjects yet</p>
+            <p className="font-medium text-foreground">No courses yet</p>
             <p className="text-sm">
-              Add subjects and tracking items to see coverage here
+              Add courses and daily tasks to see coverage here
             </p>
             <Link to="/subjects">
-              <Button className="mt-4">Add subject</Button>
+              <Button className="mt-4">Add course</Button>
             </Link>
           </div>
         )}
       </div>
 
       {/* Next up */}
-      {nextSubject && subjects.length > 0 && (
+      {nextSubject && safeSubjects.length > 0 && (
         <div className="glass-card p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-medium text-foreground">Next Up</h2>
@@ -411,7 +411,7 @@ export function GenericDashboard({
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-56">
-                {incompleteSubjects.map((sub) => (
+                {safeSubjects.map((sub) => (
                   <DropdownMenuItem
                     key={sub.id}
                     onClick={() => onSelectNextSubject(sub.id)}
@@ -430,61 +430,57 @@ export function GenericDashboard({
             </DropdownMenu>
             <div className="flex-1 text-right">
               <p className="text-sm text-muted-foreground">
-                {nextSubject.tracking
-                  .filter((t) => t.total > 0)
-                  .map(
-                    (t) =>
-                      `${t.total - t.completed} ${t.label.toLowerCase()} left`
-                  )
-                  .join(' • ') || 'No tracking items'}
+                {(nextSubject.dailyTasks ?? []).length > 0
+                  ? `${(nextSubject.dailyTasks ?? []).length} daily tasks`
+                  : 'Add daily tasks'}
               </p>
             </div>
-            <Link to="/subjects">
-              <Button size="sm">Open</Button>
-            </Link>
+            <Button size="sm" onClick={() => setCourseForTasksDialog(nextSubject)}>
+              Open
+            </Button>
           </div>
         </div>
       )}
 
-      {/* Subject list (quick links + progress) */}
+      {/* Course list (quick links + daily progress) */}
       {subjectProgress.length > 0 && (
         <div className="glass-card p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-medium text-foreground">Subjects</h2>
+            <h2 className="text-lg font-medium text-foreground">Courses</h2>
             <Link to="/subjects">
               <Button variant="ghost" size="sm" className="text-primary">
                 Manage <ArrowRight className="w-4 h-4 ml-1" />
               </Button>
             </Link>
           </div>
-          <div className="space-y-4">
-            {subjectProgress.map(({ subject, completed, total, percent }) => (
-              <Link
+          <div className="space-y-3">
+            {subjectProgress.map(({ subject, completed, total }) => (
+              <div
                 key={subject.id}
-                to={`/subjects/${subject.id}`}
-                className="block p-4 rounded-xl border border-border hover:border-primary/30 hover:bg-accent/30 transition-colors"
+                onClick={() => setCourseForTasksDialog(subject)}
+                className="cursor-pointer"
               >
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted text-2xl">
-                      {subject.icon}
-                    </span>
-                    <div className="min-w-0">
-                      <h3 className="font-medium text-foreground truncate">
-                        {subject.name}
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        {completed} / {total} items
-                      </p>
-                    </div>
-                  </div>
-                  <Progress value={percent} className="h-2 w-24 shrink-0" />
-                </div>
-              </Link>
+                <CourseCard
+                  course={subject}
+                  todayCompleted={completed}
+                  todayTotal={total}
+                  onClick={() => setCourseForTasksDialog(subject)}
+                />
+              </div>
             ))}
           </div>
         </div>
       )}
+
+      <AddCourseDailyTasksDialog
+        course={courseForTasksDialog}
+        open={!!courseForTasksDialog}
+        onOpenChange={(open) => !open && setCourseForTasksDialog(null)}
+        onAddTask={onAddCourseDailyTask}
+        onRemoveTask={onRemoveCourseDailyTask}
+        getCompletion={getCourseDailyCompletion}
+        onToggleCompletion={onToggleCourseDailyCompletion}
+      />
     </div>
   );
 }

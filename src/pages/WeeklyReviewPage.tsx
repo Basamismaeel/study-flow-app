@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ChevronLeft, ChevronRight, Calendar, Flame, BookOpen } from 'lucide-react';
-import { format } from 'date-fns';
+import { safeFormat } from '@/lib/dateUtils';
 
 const REFLECTIONS_KEY = 'weekly-reflections';
 
@@ -40,7 +40,7 @@ export function WeeklyReviewPage() {
     () => weekKeyToStartDate(selectedWeekKey),
     [selectedWeekKey]
   );
-  const weekLabel = `${format(weekStart, 'MMM d')} – ${format(
+  const weekLabel = `${safeFormat(weekStart, 'MMM d')} – ${safeFormat(
     new Date(weekStart.getTime() + 6 * 24 * 60 * 60 * 1000),
     'MMM d, yyyy'
   )}`;
@@ -182,7 +182,7 @@ export function WeeklyReviewPage() {
           <SelectContent>
             {weekOptions.map((key) => (
               <SelectItem key={key} value={key}>
-                {key} ({format(weekKeyToStartDate(key), 'MMM d')})
+                {key} ({safeFormat(weekKeyToStartDate(key), 'MMM d')})
               </SelectItem>
             ))}
           </SelectContent>

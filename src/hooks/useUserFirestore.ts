@@ -20,8 +20,17 @@ export function useUserFirestore<T>(
     }
     loadUserData(user.id)
       .then((data) => {
-        const v = (data[key] as T | undefined) ?? initialValue;
-        setStored(v);
+        const raw = data[key];
+        if (raw === undefined || raw === null) {
+          setStored(initialValue);
+          return;
+        }
+        // Ensure arrays stay arrays (Firestore might return odd shapes)
+        if (Array.isArray(initialValue) && !Array.isArray(raw)) {
+          setStored(initialValue);
+          return;
+        }
+        setStored(raw as T);
       })
       .catch(() => setStored(initialValue));
   }, [user?.id, key]);

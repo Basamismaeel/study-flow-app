@@ -9,6 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { IconPicker } from '@/components/IconPicker';
 import { Plus, Trash2 } from 'lucide-react';
 import { Subject, SubjectTrackingItem, subjectStatus } from '@/types';
 
@@ -99,25 +100,13 @@ export function AddSubjectDialog({ onAddSubject }: AddSubjectDialogProps) {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label>Icon</Label>
-            <div className="flex flex-wrap gap-2">
-              {ICON_OPTIONS.map((emoji) => (
-                <button
-                  key={emoji}
-                  type="button"
-                  onClick={() => setIcon(emoji)}
-                  className={`w-10 h-10 text-xl rounded-lg border-2 transition-all ${
-                    icon === emoji
-                      ? 'border-primary bg-primary/10'
-                      : 'border-border hover:border-primary/50'
-                  }`}
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
-          </div>
+          <IconPicker
+            label="Icon"
+            value={icon}
+            onChange={setIcon}
+            options={ICON_OPTIONS}
+            size="md"
+          />
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">

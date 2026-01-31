@@ -22,7 +22,9 @@ export async function signUp(
       password
     );
     await setDoc(doc(db, 'users', user.uid), {
-      email: user.email,
+      email: user.email ?? trimmed.toLowerCase(),
+      role: 'user',
+      status: 'pending',
       createdAt: serverTimestamp(),
     });
     return { user };

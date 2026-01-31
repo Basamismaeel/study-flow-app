@@ -22,6 +22,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Plus, Trash2, FileText, Edit2, X } from 'lucide-react';
+import { safeFormat, safeParseDate } from '@/lib/dateUtils';
 import { useUserLocalStorage } from '@/hooks/useUserLocalStorage';
 import { RichTextEditor } from '@/components/RichTextEditor';
 import type { Notebook, NotebookPage } from '@/types';
@@ -375,7 +376,7 @@ export function NotebookPage() {
                 <div className="mb-4 flex items-center justify-between">
                   <h2 className="text-xl font-semibold text-foreground">{selectedPage.title}</h2>
                   <div className="text-xs text-muted-foreground">
-                    Updated: {new Date(selectedPage.updatedAt).toLocaleDateString()}
+                    Updated: {safeFormat(safeParseDate(selectedPage.updatedAt), 'MMM d, yyyy')}
                   </div>
                 </div>
                 <RichTextEditor

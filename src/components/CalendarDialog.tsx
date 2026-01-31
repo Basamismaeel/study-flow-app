@@ -11,6 +11,7 @@ import {
 import { CalendarEvent } from '@/types';
 import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { safeFormat, safeParseDate } from '@/lib/dateUtils';
 import { useUserLocalStorage } from '@/hooks/useUserLocalStorage';
 
 interface CalendarDialogProps {
@@ -295,11 +296,7 @@ export function CalendarDialog({ open, onOpenChange }: CalendarDialogProps) {
             <div className="border-t pt-3 space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-medium">
-                  {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', {
-                    weekday: 'short',
-                    month: 'short',
-                    day: 'numeric'
-                  })}
+                  {safeFormat(safeParseDate(selectedDate + 'T00:00:00'), 'EEE, MMM d')}
                 </h3>
                 {editingEvent && (
                   <Button

@@ -8,7 +8,7 @@ import { Loader2 } from 'lucide-react';
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { user, signIn, signUp } = useAuth();
+  const { user, accessState, signIn, signUp } = useAuth();
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -16,8 +16,14 @@ export function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  if (user) {
+  if (user && accessState === 'approved') {
     return <Navigate to={user.major ? '/' : '/select-major'} replace />;
+  }
+  if (user && accessState === 'pending') {
+    return <Navigate to="/pending" replace />;
+  }
+  if (user && accessState === 'blocked') {
+    return <Navigate to="/blocked" replace />;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -50,8 +56,11 @@ export function LoginPage() {
     if (result.error) {
       setError(result.error);
     } else {
-      // New sign-ups have no major; go straight to major selection to avoid blank/redirect race
-      navigate(isSignUp ? '/select-major' : '/', { replace: true });
+      if (isSignUp) {
+        navigate('/pending', { replace: true });
+      } else {
+        navigate('/', { replace: true });
+      }
     }
   };
 

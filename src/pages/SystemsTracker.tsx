@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { IconPicker } from '@/components/IconPicker';
 import { Minus, Plus, Save, Trash2, PlusCircle } from 'lucide-react';
 import type { SystemCustomTask } from '@/types';
 
@@ -212,25 +213,13 @@ export function SystemsTracker({ systems, onUpdateSystem, onAddSystem, onDeleteS
                 className="font-medium"
               />
             </div>
-            <div className="space-y-2">
-              <Label>Icon</Label>
-              <div className="flex flex-wrap gap-1.5">
-                {EMOJI_OPTIONS.map((emoji) => (
-                  <button
-                    key={emoji}
-                    type="button"
-                    onClick={() => setEditIcon(emoji)}
-                    className={`w-8 h-8 text-base rounded-md border-2 transition-all ${
-                      editIcon === emoji
-                        ? 'border-primary bg-primary/10'
-                        : 'border-border hover:border-primary/50'
-                    }`}
-                  >
-                    {emoji}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <IconPicker
+              label="Icon"
+              value={editIcon}
+              onChange={setEditIcon}
+              options={EMOJI_OPTIONS}
+              size="sm"
+            />
 
             {/* Content Type Selection */}
             <div className="space-y-3">

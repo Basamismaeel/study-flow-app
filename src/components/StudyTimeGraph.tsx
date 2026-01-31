@@ -11,7 +11,7 @@ import {
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
-import { format, parseISO } from 'date-fns';
+import { safeFormat, safeParseDate } from '@/lib/dateUtils';
 import { BarChart3, Clock } from 'lucide-react';
 
 interface StudyTimeGraphProps {
@@ -23,14 +23,14 @@ type ViewMode = 'day' | 'week' | 'month' | 'year';
 function formatLabel(key: string, mode: ViewMode): string {
   try {
     if (mode === 'day') {
-      return format(parseISO(key), 'MMM d');
+      return safeFormat(safeParseDate(key), 'MMM d', key);
     }
     if (mode === 'week') {
       const [y, w] = key.split('-W');
-      return `W${w} '${y.slice(2)}`;
+      return `W${w} '${y?.slice(2) ?? ''}`;
     }
     if (mode === 'month') {
-      return format(parseISO(key + '-01'), 'MMM yyyy');
+      return safeFormat(safeParseDate(key + '-01'), 'MMM yyyy', key);
     }
     return key;
   } catch {

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { IconPicker } from '@/components/IconPicker';
 import { Plus } from 'lucide-react';
 import { MedicalSystem } from '@/types';
 
@@ -84,25 +85,13 @@ export function AddSystemDialog({ onAddSystem }: AddSystemDialogProps) {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label>Icon</Label>
-            <div className="flex flex-wrap gap-2">
-              {EMOJI_OPTIONS.map((emoji) => (
-                <button
-                  key={emoji}
-                  type="button"
-                  onClick={() => setIcon(emoji)}
-                  className={`w-10 h-10 text-xl rounded-lg border-2 transition-all ${
-                    icon === emoji 
-                      ? 'border-primary bg-primary/10' 
-                      : 'border-border hover:border-primary/50'
-                  }`}
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
-          </div>
+          <IconPicker
+            label="Icon"
+            value={icon}
+            onChange={setIcon}
+            options={EMOJI_OPTIONS}
+            size="md"
+          />
 
           <div className="space-y-4">
             <div className="space-y-3">

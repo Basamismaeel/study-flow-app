@@ -20,7 +20,7 @@ const AUTH_SETTLE_MS = 400;
 
 export function MajorSelectionPage() {
   const navigate = useNavigate();
-  const { user, setMajor } = useAuth();
+  const { user, accessState, setMajor } = useAuth();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [otherValue, setOtherValue] = useState('');
   const [error, setError] = useState('');
@@ -41,6 +41,9 @@ export function MajorSelectionPage() {
     }
     return <Navigate to="/login" replace />;
   }
+  if (accessState === 'pending') return <Navigate to="/pending" replace />;
+  if (accessState === 'blocked') return <Navigate to="/blocked" replace />;
+  if (accessState !== 'approved') return <Navigate to="/login" replace />;
 
   const handleSelect = (id: string) => {
     setSelectedId(id);

@@ -1,6 +1,6 @@
 import { ReactNode, useMemo, useState } from 'react';
 import { NavLink, useLocation, Link } from 'react-router-dom';
-import { LayoutDashboard, ListTodo, Clock, BookOpen, Sun, Moon, CalendarDays, LogOut, LogIn, Languages, FileText, Target, Flame, Menu, Settings2, Square } from 'lucide-react';
+import { LayoutDashboard, ListTodo, Clock, BookOpen, Sun, Moon, CalendarDays, LogOut, LogIn, Languages, FileText, Target, Flame, Menu, Settings2, Square, ShieldCheck } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { useTimer } from '@/contexts/TimerContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -49,7 +49,7 @@ const medicineNavItems: NavItem[] = [
 
 const genericNavItems: NavItem[] = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/subjects', icon: BookOpen, label: 'Subjects' },
+  { to: '/subjects', icon: BookOpen, label: 'Courses' },
   { to: '/daily', icon: ListTodo, label: 'Daily Tasks' },
   { to: '/activity', icon: Flame, label: 'Activity' },
   { to: '/goals', icon: Target, label: 'Goals' },
@@ -248,6 +248,14 @@ export function Layout({ children }: LayoutProps) {
                     <DropdownMenuItem className="text-muted-foreground cursor-default">
                       {user.email}
                     </DropdownMenuItem>
+                    {user.role === 'admin' && (
+                      <DropdownMenuItem asChild>
+                        <Link to="/admin" className="flex items-center gap-2">
+                          <ShieldCheck className="w-4 h-4" />
+                          Pending approvals
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem onClick={() => signOut()} className="text-destructive focus:text-destructive">
                       <LogOut className="w-4 h-4 mr-2" />
                       Log out

@@ -26,6 +26,8 @@ export interface DailyTask {
   text: string;
   completed: boolean;
   createdAt: Date;
+  /** ISO date string (YYYY-MM-DD). If omitted, treated as the date of createdAt. */
+  date?: string;
 }
 
 export interface ActivityLog {
@@ -144,6 +146,8 @@ export interface Subject {
   icon: string;
   tracking: SubjectTrackingItem[];
   status: 'not-started' | 'in-progress' | 'completed';
+  /** Daily task templates for this course (generic majors). What to finish daily. */
+  dailyTasks?: CourseDailyTask[];
 }
 
 /** User-defined task within a subject. Title and completion only. */
@@ -151,6 +155,19 @@ export interface GenericTask {
   id: string;
   subjectId: string;
   title: string;
+  completed: boolean;
+}
+
+/** Daily task template for a course (generic majors). What to finish daily for that course. */
+export interface CourseDailyTask {
+  id: string;
+  text: string;
+}
+
+/** Completion record for a course daily task on a specific date. */
+export interface CourseDailyCompletion {
+  taskId: string;
+  date: string; // YYYY-MM-DD
   completed: boolean;
 }
 
