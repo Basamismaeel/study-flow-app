@@ -23,10 +23,10 @@ import { cn } from '@/lib/utils';
 
 interface DailyTasksProps {
   tasks: DailyTask[];
-  onAddTask: (text: string, date?: string, time?: string) => void;
+  onAddTask: (text: string, date?: string, timeStart?: string, timeEnd?: string) => void;
   onToggleTask: (id: string) => void;
   onDeleteTask: (id: string) => void;
-  onUpdateTask?: (id: string, text: string, time?: string) => void;
+  onUpdateTask?: (id: string, text: string, timeStart?: string, timeEnd?: string) => void;
   onClearAllTasks: () => void;
   /** When true, allows adding and viewing tasks for any date */
   allowOtherDays?: boolean;
@@ -34,7 +34,8 @@ interface DailyTasksProps {
 
 export function DailyTasks({ tasks, onAddTask, onToggleTask, onDeleteTask, onUpdateTask, onClearAllTasks, allowOtherDays = false }: DailyTasksProps) {
   const [newTask, setNewTask] = useState('');
-  const [newTaskTime, setNewTaskTime] = useState<string>('');
+  const [newTaskStart, setNewTaskStart] = useState<string>('');
+  const [newTaskEnd, setNewTaskEnd] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   const today = new Date();
   const todayStr = safeToDateString(today);
@@ -54,8 +55,8 @@ export function DailyTasks({ tasks, onAddTask, onToggleTask, onDeleteTask, onUpd
 
   // Sort: with time first (by time), then without time
   const filteredTasks = [...filteredTasksRaw].sort((a, b) => {
-    const at = a.time ?? '';
-    const bt = b.time ?? '';
+    const at = a.timeStart ?? a.time ?? '';
+    const bt = b.timeStart ?? b.time ?? '';
     if (!at && !bt) return 0;
     if (!at) return 1;
     if (!bt) return -1;
@@ -68,10 +69,12 @@ export function DailyTasks({ tasks, onAddTask, onToggleTask, onDeleteTask, onUpd
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (newTask.trim()) {
-      const time = newTaskTime.trim() || undefined;
-      onAddTask(newTask.trim(), allowOtherDays ? viewDate : undefined, time);
+      const start = newTaskStart.trim() || undefined;
+      const end = newTaskEnd.trim() || undefined;
+      onAddTask(newTask.trim(), allowOtherDays ? viewDate : undefined, start, end);
       setNewTask('');
-      setNewTaskTime('');
+      setNewTaskStart('');
+      setNewTaskEnd('');
       toast.success('Task added');
     }
   };
@@ -166,16 +169,30 @@ export function DailyTasks({ tasks, onAddTask, onToggleTask, onDeleteTask, onUpd
               placeholder={allowOtherDays ? "Add a task..." : "Add a task for today..."}
               className="flex-1 h-12 text-base"
             />
-            <label className="sr-only" htmlFor="new-task-time">Time (optional)</label>
-            <Input
-              id="new-task-time"
-              type="time"
-              value={newTaskTime}
-              onChange={(e) => setNewTaskTime(e.target.value)}
-              className="w-[100px] shrink-0 h-12"
-              title="Optional time"
-              aria-label="Optional time"
-            />
+            <div className="flex items-center rounded-full border border-border/60 bg-background px-3 h-12 shadow-sm ring-1 ring-muted/40">
+              <Clock className="w-4 h-4 text-muted-foreground mr-2" aria-hidden />
+              <label className="sr-only" htmlFor="new-task-start">Start time (optional)</label>
+              <Input
+                id="new-task-start"
+                type="time"
+                value={newTaskStart}
+                onChange={(e) => setNewTaskStart(e.target.value)}
+                className="w-[96px] h-9 border-0 bg-transparent px-2 text-sm font-medium text-foreground focus-visible:ring-0"
+                title="Start time (optional)"
+                aria-label="Start time (optional)"
+              />
+              <span className="text-xs text-muted-foreground/80 px-1">to</span>
+              <label className="sr-only" htmlFor="new-task-end">End time (optional)</label>
+              <Input
+                id="new-task-end"
+                type="time"
+                value={newTaskEnd}
+                onChange={(e) => setNewTaskEnd(e.target.value)}
+                className="w-[96px] h-9 border-0 bg-transparent px-2 text-sm font-medium text-foreground focus-visible:ring-0"
+                title="End time (optional)"
+                aria-label="End time (optional)"
+              />
+            </div>
           </div>
           <Button type="submit" size="lg" disabled={!newTask.trim()} className="sm:self-auto h-12">
             <Plus className="w-5 h-5" />
@@ -183,7 +200,7 @@ export function DailyTasks({ tasks, onAddTask, onToggleTask, onDeleteTask, onUpd
         </div>
         <p className="text-xs text-muted-foreground flex items-center gap-1.5">
           <Clock className="w-3.5 h-3.5" />
-          Time is optional — add it to sort and see when to do each task.
+          Time is optional — add a range to sort and plan your day.
         </p>
       </form>
 

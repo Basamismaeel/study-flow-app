@@ -28,7 +28,11 @@ export interface DailyTask {
   createdAt: Date;
   /** ISO date string (YYYY-MM-DD). If omitted, treated as the date of createdAt. */
   date?: string;
-  /** Optional time in HH:mm (24h). When set, task can be shown/sorted by time. */
+  /** Optional start time in HH:mm (24h). When set, task can be shown/sorted by time. */
+  timeStart?: string;
+  /** Optional end time in HH:mm (24h). */
+  timeEnd?: string;
+  /** Deprecated single time in HH:mm (24h). Use timeStart/timeEnd. */
   time?: string;
 }
 

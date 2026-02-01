@@ -70,3 +70,15 @@ export function formatTimeForDisplay(hhmm: string | undefined, fallback = '—')
   if (h < 12) return `${h}:${mins.toString().padStart(2, '0')} AM`;
   return `${h - 12}:${mins.toString().padStart(2, '0')} PM`;
 }
+
+/**
+ * Format a start/end time range. Falls back gracefully.
+ */
+export function formatTimeRange(start?: string, end?: string): string | null {
+  const startLabel = start ? formatTimeForDisplay(start, '') : '';
+  const endLabel = end ? formatTimeForDisplay(end, '') : '';
+  if (startLabel && endLabel) return `${startLabel} – ${endLabel}`;
+  if (startLabel) return startLabel;
+  if (endLabel) return endLabel;
+  return null;
+}

@@ -144,14 +144,15 @@ export function GenericIndex() {
     return c?.completed ?? false;
   };
 
-  const handleAddDailyTask = (text: string, date?: string, time?: string) => {
+  const handleAddDailyTask = (text: string, date?: string, timeStart?: string, timeEnd?: string) => {
     const newTask: DailyTask = {
       id: crypto.randomUUID(),
       text,
       completed: false,
       createdAt: new Date(),
       date: date ?? new Date().toISOString().slice(0, 10),
-      ...(time && time.trim() && { time: time.trim() }),
+      ...(timeStart && timeStart.trim() && { timeStart: timeStart.trim() }),
+      ...(timeEnd && timeEnd.trim() && { timeEnd: timeEnd.trim() }),
     };
     setDailyTasks((prev) => [newTask, ...(Array.isArray(prev) ? prev : [])]);
   };
@@ -167,12 +168,17 @@ export function GenericIndex() {
     setDailyTasks((prev) => (Array.isArray(prev) ? prev : []).filter((t) => t.id !== id));
   };
 
-  const handleUpdateDailyTask = (id: string, text: string, time?: string) => {
+  const handleUpdateDailyTask = (id: string, text: string, timeStart?: string, timeEnd?: string) => {
     setDailyTasks((prev) => {
       const list = Array.isArray(prev) ? prev : [];
       return list.map((t) =>
         t.id === id
-          ? { ...t, text, ...(time !== undefined && { time: time === '' ? undefined : time }) }
+          ? {
+              ...t,
+              text,
+              ...(timeStart !== undefined && { timeStart: timeStart === '' ? undefined : timeStart }),
+              ...(timeEnd !== undefined && { timeEnd: timeEnd === '' ? undefined : timeEnd }),
+            }
           : t
       );
     });

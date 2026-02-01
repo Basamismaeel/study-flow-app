@@ -40,13 +40,14 @@ export function MedicineIndex() {
     if (selectedNextSystemId === id) setSelectedNextSystemId(null);
   };
 
-  const handleAddTask = (text: string, _date?: string, time?: string) => {
+  const handleAddTask = (text: string, _date?: string, timeStart?: string, timeEnd?: string) => {
     const newTask: DailyTask = {
       id: crypto.randomUUID(),
       text,
       completed: false,
       createdAt: new Date(),
-      ...(time && time.trim() && { time: time.trim() }),
+      ...(timeStart && timeStart.trim() && { timeStart: timeStart.trim() }),
+      ...(timeEnd && timeEnd.trim() && { timeEnd: timeEnd.trim() }),
     };
     setTasks((prev) => [newTask, ...prev]);
   };
@@ -61,11 +62,16 @@ export function MedicineIndex() {
     setTasks((prev) => prev.filter((task) => task.id !== id));
   };
 
-  const handleUpdateTask = (id: string, text: string, time?: string) => {
+  const handleUpdateTask = (id: string, text: string, timeStart?: string, timeEnd?: string) => {
     setTasks((prev) =>
       prev.map((task) =>
         task.id === id
-          ? { ...task, text, ...(time !== undefined && { time: time === '' ? undefined : time }) }
+          ? {
+              ...task,
+              text,
+              ...(timeStart !== undefined && { timeStart: timeStart === '' ? undefined : timeStart }),
+              ...(timeEnd !== undefined && { timeEnd: timeEnd === '' ? undefined : timeEnd }),
+            }
           : task
       )
     );

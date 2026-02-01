@@ -4,14 +4,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Trash2, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { formatTimeForDisplay } from '@/lib/dateUtils';
+import { formatTimeForDisplay, formatTimeRange } from '@/lib/dateUtils';
 
 interface TaskItemProps {
   task: DailyTask;
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
-  /** When provided, text and optional time are editable. time?: string clears time when passed "". */
-  onUpdate?: (id: string, text: string, time?: string) => void;
+  /** When provided, text and optional time are editable. timeStart/timeEnd clear when passed "". */
+  onUpdate?: (id: string, text: string, timeStart?: string, timeEnd?: string) => void;
 }
 
 export function TaskItem({ task, onToggle, onDelete, onUpdate }: TaskItemProps) {
@@ -29,7 +29,7 @@ export function TaskItem({ task, onToggle, onDelete, onUpdate }: TaskItemProps) 
         {onUpdate ? (
           <Input
             value={task.text}
-            onChange={(e) => onUpdate(task.id, e.target.value, task.time)}
+            onChange={(e) => onUpdate(task.id, e.target.value, task.timeStart ?? task.time, task.timeEnd)}
             className={cn(
               'flex-1 min-w-0 h-9 border-0 bg-transparent shadow-none focus-visible:ring-1 focus-visible:ring-ring',
               task.completed && 'line-through text-muted-foreground'
@@ -44,38 +44,40 @@ export function TaskItem({ task, onToggle, onDelete, onUpdate }: TaskItemProps) 
             {task.text}
           </span>
         )}
-        {task.time != null && task.time !== '' ? (
-          onUpdate ? (
-            <label className="flex items-center gap-1.5 shrink-0 text-sm text-muted-foreground">
-              <Clock className="w-3.5 h-3.5" aria-hidden />
-              <Input
-                type="time"
-                value={task.time}
-                onChange={(e) => onUpdate(task.id, task.text, e.target.value || undefined)}
-                className="h-8 w-[90px] text-muted-foreground text-sm border-muted"
-                aria-label="Task time"
-              />
-            </label>
-          ) : (
-            <span className="flex items-center gap-1.5 shrink-0 text-sm text-muted-foreground" aria-hidden>
-              <Clock className="w-3.5 h-3.5" />
-              {formatTimeForDisplay(task.time)}
-            </span>
-          )
-        ) : onUpdate ? (
-          <label className="flex items-center gap-1.5 shrink-0 text-sm text-muted-foreground">
-            <Clock className="w-3.5 h-3.5" aria-hidden />
+        {onUpdate ? (
+          <div className="flex items-center rounded-full border border-border/60 bg-background px-3 h-9 shrink-0 shadow-sm ring-1 ring-muted/40">
+            <Clock className="w-3.5 h-3.5 text-muted-foreground mr-2" aria-hidden />
+            <label className="sr-only" htmlFor={`task-start-${task.id}`}>Start time</label>
             <Input
+              id={`task-start-${task.id}`}
               type="time"
-              value=""
-              onChange={(e) => e.target.value && onUpdate(task.id, task.text, e.target.value)}
-              className="h-8 w-[90px] text-muted-foreground text-sm border-muted border-dashed"
-              placeholder="Time"
-              aria-label="Add time (optional)"
-              title="Add time (optional)"
+              value={task.timeStart ?? task.time ?? ''}
+              onChange={(e) => onUpdate(task.id, task.text, e.target.value, task.timeEnd)}
+              className="h-8 w-[92px] text-foreground text-sm font-medium border-0 bg-transparent px-1.5 focus-visible:ring-0"
+              aria-label="Start time"
             />
-          </label>
-        ) : null}
+            <span className="text-xs text-muted-foreground/80 px-1">to</span>
+            <label className="sr-only" htmlFor={`task-end-${task.id}`}>End time</label>
+            <Input
+              id={`task-end-${task.id}`}
+              type="time"
+              value={task.timeEnd ?? ''}
+              onChange={(e) => onUpdate(task.id, task.text, task.timeStart ?? task.time, e.target.value)}
+              className="h-8 w-[92px] text-foreground text-sm font-medium border-0 bg-transparent px-1.5 focus-visible:ring-0"
+              aria-label="End time"
+            />
+          </div>
+        ) : (
+          (() => {
+            const timeRange = formatTimeRange(task.timeStart ?? task.time, task.timeEnd);
+            return timeRange ? (
+              <span className="flex items-center gap-1.5 shrink-0 text-sm text-muted-foreground" aria-hidden>
+                <Clock className="w-3.5 h-3.5" />
+                {timeRange}
+              </span>
+            ) : null;
+          })()
+        )}
       </div>
       <Button
         variant="ghost"
