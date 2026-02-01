@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Subject, CourseDailyCompletion } from '@/types';
 import { CourseCard } from '@/components/CourseCard';
 import { AddCourseDialog } from '@/components/AddCourseDialog';
+import { EmptyState } from '@/components/EmptyState';
 import { AddCourseDailyTasksDialog } from '@/components/AddCourseDailyTasksDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,9 +23,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Save, Trash2 } from 'lucide-react';
+import { Save, Trash2, BookOpen, Search } from 'lucide-react';
 import { IconPicker } from '@/components/IconPicker';
 import { safeToDateString } from '@/lib/dateUtils';
+import { toast } from 'sonner';
 
 const ICON_OPTIONS = [
   '📚', '📖', '📐', '🔬', '💼', '⚖️', '🎯', '📊', '🧮', '📝',
@@ -59,6 +61,7 @@ export function SubjectsPage({
   const [editName, setEditName] = useState('');
   const [editIcon, setEditIcon] = useState('📚');
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const courseForTasks = courseForTasksDialog
     ? subjects.find((s) => s.id === courseForTasksDialog.id) ?? courseForTasksDialog
@@ -77,6 +80,11 @@ export function SubjectsPage({
     return { completed, total };
   };
 
+  const searchLower = searchQuery.trim().toLowerCase();
+  const filteredSubjects = searchLower
+    ? subjects.filter((s) => s.name.toLowerCase().includes(searchLower))
+    : subjects;
+
   const openEditDialog = (course: Subject) => {
     setSelectedCourse(course);
     setEditName(course.name);
@@ -90,6 +98,7 @@ export function SubjectsPage({
       icon: editIcon,
     });
     setSelectedCourse(null);
+    toast.success('Course saved');
   };
 
   const handleDelete = () => {
@@ -102,8 +111,8 @@ export function SubjectsPage({
     <div className="space-y-8 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Courses</h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <h1 className="text-3xl font-semibold text-foreground tracking-tight">Courses</h1>
+          <p className="text-muted-foreground mt-1">
             Add courses and daily tasks. Check them off each day.
           </p>
         </div>
@@ -111,34 +120,48 @@ export function SubjectsPage({
       </div>
 
       {subjects.length === 0 ? (
-        <div className="rounded-2xl border-2 border-dashed border-border bg-muted/20 py-16 px-6 text-center">
-          <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mx-auto mb-4 text-2xl">
-            📚
-          </div>
-          <p className="text-muted-foreground font-medium">No courses yet</p>
-          <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
-            Add your first course and define what you want to accomplish each day.
-          </p>
-          <div className="mt-6">
-            <AddCourseDialog onAddCourse={onAddSubject} />
-          </div>
-        </div>
+        <EmptyState
+          variant="card"
+          icon={<BookOpen className="w-7 h-7" />}
+          title="No courses yet"
+          description="Your courses will show here once you add one."
+          action={<AddCourseDialog onAddCourse={onAddSubject} />}
+        />
       ) : (
-        <div className="space-y-3">
-          {subjects.map((course) => {
-            const { completed, total } = getTodayProgress(course);
-            return (
-              <div key={course.id} onClick={() => openEditDialog(course)}>
-                <CourseCard
-                  course={course}
-                  todayCompleted={completed}
-                  todayTotal={total}
-                  onClick={() => openEditDialog(course)}
-                />
-              </div>
-            );
-          })}
-        </div>
+        <>
+          <div className="relative max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Input
+              type="search"
+              placeholder="Search courses..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-10"
+              aria-label="Search courses"
+            />
+          </div>
+          <div className="space-y-3">
+            {filteredSubjects.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">
+                {searchLower ? 'No courses match your search.' : 'No courses yet.'}
+              </p>
+            ) : (
+              filteredSubjects.map((course) => {
+                const { completed, total } = getTodayProgress(course);
+                return (
+                  <div key={course.id} onClick={() => openEditDialog(course)}>
+                    <CourseCard
+                      course={course}
+                      todayCompleted={completed}
+                      todayTotal={total}
+                      onClick={() => openEditDialog(course)}
+                    />
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </>
       )}
 
       {/* Edit Dialog */}

@@ -197,7 +197,7 @@ export function SystemsTracker({ systems, onUpdateSystem, onAddSystem, onDeleteS
 
       {/* Edit Dialog */}
       <Dialog open={!!selectedSystem} onOpenChange={(open) => !open && setSelectedSystem(null)}>
-        <DialogContent className="sm:max-w-xs max-h-[90vh] flex flex-col overflow-hidden p-4 gap-3 [&>button]:shrink-0">
+        <DialogContent className="sm:max-w-xl max-h-[90vh] flex flex-col overflow-hidden p-4 gap-3 [&>button]:shrink-0">
           <DialogHeader className="shrink-0">
             <DialogTitle className="text-base">Edit system</DialogTitle>
           </DialogHeader>

@@ -4,7 +4,8 @@ import { Subject, CourseDailyCompletion } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, ArrowLeft, Trash2 } from 'lucide-react';
+import { Plus, ArrowLeft, Trash2, ListTodo } from 'lucide-react';
+import { EmptyState } from '@/components/EmptyState';
 import { safeFormat, safeParseDate, safeToDateString } from '@/lib/dateUtils';
 
 interface SubjectDetailPageProps {
@@ -84,10 +85,12 @@ export function SubjectDetailPage({
 
       <div>
         {dailyTasks.length === 0 ? (
-          <div className="rounded-xl border-2 border-dashed border-border bg-muted/10 py-12 px-6 text-center">
-            <p className="text-muted-foreground text-sm">No daily tasks yet</p>
-            <p className="text-muted-foreground/80 text-xs mt-1">Add tasks above — check them off each day</p>
-          </div>
+          <EmptyState
+            variant="inline"
+            icon={<ListTodo className="w-8 h-8" />}
+            title="No daily tasks yet"
+            description="Add tasks above and check them off each day."
+          />
         ) : (
           <div className="space-y-1">
             <p className="text-xs text-muted-foreground mb-3">

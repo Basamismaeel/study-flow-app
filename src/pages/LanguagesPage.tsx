@@ -4,11 +4,12 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { LanguageWeekCard } from '@/components/LanguageWeekCard';
 import { AddLanguageDialog } from '@/components/AddLanguageDialog';
+import { EmptyState } from '@/components/EmptyState';
 import { ProgressBar } from '@/components/ProgressBar';
 import { useUserLocalStorage } from '@/hooks/useUserLocalStorage';
 import { syncPlanWeeks } from '@/lib/languageLogic';
 import type { LanguagePlan, LanguageWeek } from '@/types';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Languages } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   AlertDialog,
@@ -212,13 +213,18 @@ export function LanguagesPage() {
       />
 
       {!hasPlans ? (
-        <div className="glass-card p-12 text-center">
-          <p className="text-muted-foreground mb-4">No languages yet.</p>
-          <Button onClick={() => setAddDialogOpen(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Add your first language
-          </Button>
-        </div>
+        <EmptyState
+          variant="card"
+          icon={<Languages className="w-7 h-7" />}
+          title="No languages yet"
+          description="Add a language plan to track coursebook and speaking days."
+          action={
+            <Button onClick={() => setAddDialogOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add your first language
+            </Button>
+          }
+        />
       ) : (
         <Tabs
           value={state.selectedId ?? state.plans[0]?.id ?? ''}

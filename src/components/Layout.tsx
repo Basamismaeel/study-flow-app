@@ -1,7 +1,8 @@
 import { ReactNode, useMemo, useState } from 'react';
 import { NavLink, useLocation, Link } from 'react-router-dom';
-import { LayoutDashboard, ListTodo, Clock, BookOpen, Sun, Moon, CalendarDays, LogOut, LogIn, Languages, FileText, Target, Flame, Menu, Settings2, Square, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, ListTodo, Clock, BookOpen, Sun, Moon, CalendarDays, LogOut, LogIn, Languages, FileText, Target, Flame, Menu, Settings2, Square, ShieldCheck, Palette } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
+import { useColorTheme } from '@/hooks/useColorTheme';
 import { useTimer } from '@/contexts/TimerContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useActiveStudySession } from '@/contexts/ActiveStudySessionContext';
@@ -15,6 +16,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -25,6 +31,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { useUserLocalStorage } from '@/hooks/useUserLocalStorage';
 import { cn } from '@/lib/utils';
+import type { ColorThemeId } from '@/lib/colorThemes';
 
 const MAX_PINNED = 5;
 const NAV_PINNED_KEY_PREFIX = 'nav-pinned-';
@@ -104,6 +111,7 @@ function ActiveStudySessionBar() {
 
 export function Layout({ children }: LayoutProps) {
   const { theme, toggleTheme } = useTheme();
+  const { color, setColor, themes } = useColorTheme(theme);
   const location = useLocation();
   const { timeLeft, isRunning } = useTimer();
   const { user, signOut } = useAuth();
@@ -270,6 +278,36 @@ export function Layout({ children }: LayoutProps) {
                   </Button>
                 </Link>
               )}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                    aria-label="Theme color"
+                  >
+                    <Palette className="w-5 h-5" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-auto p-3">
+                  <p className="text-xs font-medium text-muted-foreground mb-2">Theme color</p>
+                  <div className="flex flex-wrap gap-2">
+                    {(Object.keys(themes) as ColorThemeId[]).map((id) => (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => setColor(id)}
+                        className={cn(
+                          'w-8 h-8 rounded-full transition-transform hover:scale-110',
+                          color === id && 'ring-2 ring-offset-2 ring-offset-background ring-primary'
+                        )}
+                        style={{ backgroundColor: themes[id].swatch }}
+                        aria-label={themes[id].label}
+                        title={themes[id].label}
+                      />
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
               <button
                 onClick={toggleTheme}
                 className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"

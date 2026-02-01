@@ -34,15 +34,15 @@ export function PendingApprovalPage() {
         </div>
         <div>
           <h1 className="text-xl font-semibold text-foreground">
-            Your account is waiting for admin approval.
+            Waiting for approval
           </h1>
-          <p className="text-muted-foreground mt-2">
-            You will be able to access the dashboard once an administrator approves your account.
+          <p className="text-muted-foreground mt-1 text-sm">
+            You’ll get access once an admin approves your account.
           </p>
         </div>
         {user?.email && (
           <p className="text-sm text-muted-foreground">
-            Signed in as <span className="font-medium text-foreground">{user.email}</span>
+            {user.email}
           </p>
         )}
         <Button variant="outline" onClick={() => signOut()}>

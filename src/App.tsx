@@ -13,11 +13,13 @@ import { PendingApprovalPage } from "@/pages/PendingApprovalPage";
 import { BlockedAccessPage } from "@/pages/BlockedAccessPage";
 import { AdminApprovalPage } from "@/pages/AdminApprovalPage";
 import { ProtectedLayout } from "@/components/ProtectedLayout";
+import { ThemeInitializer } from "@/components/ThemeInitializer";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
+    <ThemeInitializer />
     <TooltipProvider>
       <ErrorBoundary
         fallback={

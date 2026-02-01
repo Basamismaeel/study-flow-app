@@ -1,21 +1,52 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Play, Pause, RotateCcw } from 'lucide-react';
+import { Play, Pause, RotateCcw, Timer, Coffee } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTimer } from '@/contexts/TimerContext';
+import { useUserLocalStorage } from '@/hooks/useUserLocalStorage';
 
 type TimeUnit = 'minutes' | 'hours';
+type TimerMode = 'focus' | 'pomodoro';
+type PomodoroPhase = 'work' | 'shortBreak' | 'longBreak';
+
+const DEFAULT_TIMER_MINUTES = 25;
+const POMODORO_WORK_DEFAULT = 25;
+const POMODORO_SHORT_DEFAULT = 5;
+const POMODORO_LONG_DEFAULT = 15;
+const POMODORO_SESSIONS_BEFORE_LONG = 4;
 
 export function TimerPage() {
+  const [defaultMinutes, setDefaultMinutes] = useUserLocalStorage<number>(
+    'timer-default-minutes',
+    DEFAULT_TIMER_MINUTES
+  );
+  const [pomodoroWork, setPomodoroWork] = useUserLocalStorage<number>(
+    'pomodoro-work-minutes',
+    POMODORO_WORK_DEFAULT
+  );
+  const [pomodoroShort, setPomodoroShort] = useUserLocalStorage<number>(
+    'pomodoro-short-minutes',
+    POMODORO_SHORT_DEFAULT
+  );
+  const [pomodoroLong, setPomodoroLong] = useUserLocalStorage<number>(
+    'pomodoro-long-minutes',
+    POMODORO_LONG_DEFAULT
+  );
+
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [mode, setMode] = useState<TimerMode>('focus');
+  const [pomodoroPhase, setPomodoroPhase] = useState<PomodoroPhase>('work');
+  const [pomodoroSession, setPomodoroSession] = useState(0); // 0..3, work sessions before long break
   const [hours, setHours] = useState(0);
   const [minutes, setMinutes] = useState(25);
   const [seconds, setSeconds] = useState(0);
   const [quickValue, setQuickValue] = useState('');
   const [quickUnit, setQuickUnit] = useState<TimeUnit>('minutes');
-  
+  const prevCompleteRef = useRef(false);
+  const prevModeRef = useRef<TimerMode | null>(null);
+
   const { 
     timeLeft, 
     isRunning, 
@@ -27,6 +58,43 @@ export function TimerPage() {
     resumeTimer, 
     resetTimer 
   } = useTimer();
+
+  // Initialize duration from default when switching to focus mode or on first load
+  useEffect(() => {
+    if (mode === 'focus' && prevModeRef.current !== 'focus') {
+      const totalMins = Math.min(99 * 60 + 59, Math.max(0, defaultMinutes));
+      setHours(Math.floor(totalMins / 60));
+      setMinutes(totalMins % 60);
+      setSeconds(0);
+    }
+    prevModeRef.current = mode;
+  }, [mode, defaultMinutes]);
+
+  // Pomodoro auto-advance when a phase completes
+  useEffect(() => {
+    if (mode !== 'pomodoro' || !isComplete) {
+      prevCompleteRef.current = isComplete;
+      return;
+    }
+    if (prevCompleteRef.current) return;
+    prevCompleteRef.current = true;
+
+    if (pomodoroPhase === 'work') {
+      const nextPhase = pomodoroSession === POMODORO_SESSIONS_BEFORE_LONG - 1 ? 'longBreak' : 'shortBreak';
+      setPomodoroPhase(nextPhase);
+      if (nextPhase === 'longBreak') setPomodoroSession(0);
+      const mins = nextPhase === 'longBreak' ? pomodoroLong : pomodoroShort;
+      startTimer(0, mins, 0);
+    } else {
+      setPomodoroPhase('work');
+      setPomodoroSession((s) => (pomodoroPhase === 'longBreak' ? 0 : s + 1));
+      startTimer(0, pomodoroWork, 0);
+    }
+  }, [mode, isComplete, pomodoroPhase, pomodoroSession, pomodoroWork, pomodoroShort, pomodoroLong, startTimer]);
+
+  useEffect(() => {
+    if (!isComplete) prevCompleteRef.current = false;
+  }, [isComplete]);
 
   const isTimerMode = timeLeft > 0 || isRunning || isComplete;
 
@@ -57,12 +125,19 @@ export function TimerPage() {
   };
 
   const isPaused = isTimerMode && !isRunning && !isComplete;
-  // Show time inputs and Start when idle, after complete, or when timer shows 00:00 and isn't running
   const isFinished = timeLeft === 0 && !isRunning;
   const showSetDuration = canSetDuration || isComplete || isFinished;
+  const showFocusDurationControls = showSetDuration && mode === 'focus';
+  const showPomodoroStart = showSetDuration && mode === 'pomodoro';
 
   const handleStart = () => {
-    startTimer(hours, minutes, seconds);
+    if (mode === 'pomodoro') {
+      setPomodoroPhase('work');
+      setPomodoroSession(0);
+      startTimer(0, pomodoroWork, 0);
+    } else {
+      startTimer(hours, minutes, seconds);
+    }
   };
 
   const handlePause = () => {
@@ -75,6 +150,15 @@ export function TimerPage() {
 
   const handleReset = () => {
     resetTimer();
+    if (mode === 'pomodoro') {
+      setPomodoroPhase('work');
+      setPomodoroSession(0);
+    }
+  };
+
+  const saveAsDefault = () => {
+    const totalMins = hours * 60 + minutes;
+    setDefaultMinutes(Math.min(99 * 60 + 59, Math.max(0, totalMins)));
   };
 
   const handleInputChange = (field: 'hours' | 'minutes' | 'seconds', value: string) => {
@@ -150,7 +234,12 @@ export function TimerPage() {
   };
 
   // When user can set duration, show their selected time in the circle; otherwise show countdown
-  const displaySeconds = showSetDuration ? hours * 3600 + minutes * 60 + seconds : timeLeft;
+  const displaySeconds =
+    showSetDuration
+      ? mode === 'pomodoro'
+        ? (pomodoroPhase === 'work' ? pomodoroWork : pomodoroPhase === 'shortBreak' ? pomodoroShort : pomodoroLong) * 60
+        : hours * 3600 + minutes * 60 + seconds
+      : timeLeft;
   const displayProgress = showSetDuration ? 0 : progress;
 
   const handleQuickValueKeyDown = (e: React.KeyboardEvent) => {
@@ -170,6 +259,19 @@ export function TimerPage() {
     { label: '2 hours', h: 2, m: 0, s: 0 },
   ];
 
+  const pomodoroPhaseLabel =
+    pomodoroPhase === 'work'
+      ? 'Focus'
+      : pomodoroPhase === 'shortBreak'
+        ? 'Short break'
+        : 'Long break';
+  const pomodoroSessionLabel =
+    pomodoroPhase === 'work'
+      ? `Session ${pomodoroSession + 1} of ${POMODORO_SESSIONS_BEFORE_LONG}`
+      : pomodoroPhase === 'longBreak'
+        ? 'Long break'
+        : `Break before session ${pomodoroSession + 2}`;
+
   return (
     <div className="max-w-xl mx-auto space-y-12 animate-fade-in">
       {/* Live Clock */}
@@ -188,7 +290,45 @@ export function TimerPage() {
       {/* Timer Section */}
       <div className="glass-card p-8">
         <div className="text-center mb-8">
-          <h2 className="text-lg font-medium text-foreground mb-6">Focus Timer</h2>
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <div className="inline-flex rounded-lg border border-input bg-muted/30 p-1">
+              <button
+                type="button"
+                onClick={() => { setMode('focus'); resetTimer(); }}
+                className={cn(
+                  'flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors',
+                  mode === 'focus'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <Timer className="w-4 h-4" />
+                Focus
+              </button>
+              <button
+                type="button"
+                onClick={() => { setMode('pomodoro'); resetTimer(); setPomodoroPhase('work'); setPomodoroSession(0); }}
+                className={cn(
+                  'flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors',
+                  mode === 'pomodoro'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <Coffee className="w-4 h-4" />
+                Pomodoro
+              </button>
+            </div>
+          </div>
+          {mode === 'pomodoro' && (
+            <p className="text-sm text-muted-foreground mb-2">
+              {pomodoroPhaseLabel}
+              {isRunning || isPaused || isComplete ? ` · ${pomodoroSessionLabel}` : ''}
+            </p>
+          )}
+          <h2 className="text-lg font-medium text-foreground mb-6">
+            {mode === 'pomodoro' ? 'Pomodoro' : 'Focus Timer'}
+          </h2>
           
           {/* Timer Display with Progress Ring */}
           <div className="relative inline-flex items-center justify-center mb-8">
@@ -224,8 +364,55 @@ export function TimerPage() {
             </div>
           </div>
 
-          {/* Time Adjustment (when user can set duration: idle or after complete/reset) */}
-          {showSetDuration && (
+          {/* Pomodoro idle: show settings and Start */}
+          {showPomodoroStart && (
+            <div className="space-y-4 mb-6">
+              <p className="text-xs text-muted-foreground">
+                Work {pomodoroWork} min · Short break {pomodoroShort} min · Long break {pomodoroLong} min
+              </p>
+              <div className="flex flex-wrap justify-center gap-3">
+                <div className="flex flex-col items-center gap-1">
+                  <Label className="text-xs text-muted-foreground">Work</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={60}
+                    value={pomodoroWork}
+                    onChange={(e) => setPomodoroWork(Math.min(60, Math.max(1, parseInt(e.target.value, 10) || 25)))}
+                    className="w-14 text-center text-sm"
+                    aria-label="Work minutes"
+                  />
+                </div>
+                <div className="flex flex-col items-center gap-1">
+                  <Label className="text-xs text-muted-foreground">Short</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={30}
+                    value={pomodoroShort}
+                    onChange={(e) => setPomodoroShort(Math.min(30, Math.max(1, parseInt(e.target.value, 10) || 5)))}
+                    className="w-14 text-center text-sm"
+                    aria-label="Short break minutes"
+                  />
+                </div>
+                <div className="flex flex-col items-center gap-1">
+                  <Label className="text-xs text-muted-foreground">Long</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={60}
+                    value={pomodoroLong}
+                    onChange={(e) => setPomodoroLong(Math.min(60, Math.max(1, parseInt(e.target.value, 10) || 15)))}
+                    className="w-14 text-center text-sm"
+                    aria-label="Long break minutes"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Time Adjustment (Focus mode: when user can set duration) */}
+          {showFocusDurationControls && (
             <div className="space-y-4 mb-6">
               {/* Quick set: amount + minutes or hours */}
               <div className="flex flex-col sm:flex-row items-center justify-center gap-2 p-3 rounded-lg bg-muted/50">
@@ -352,24 +539,27 @@ export function TimerPage() {
                   </Button>
                 ))}
               </div>
+              <Button variant="ghost" size="sm" onClick={saveAsDefault} className="text-muted-foreground">
+                Set current as default
+              </Button>
             </div>
           )}
 
           {/* Controls: Start, Pause, Resume, Reset */}
           <div className="flex flex-wrap justify-center gap-3">
-            {showSetDuration && (
+            {(showFocusDurationControls || showPomodoroStart) && (
               <Button
                 size="lg"
                 onClick={handleStart}
-                className="px-8"
-                disabled={hours === 0 && minutes === 0 && seconds === 0}
+                className="px-10 min-h-[52px] tap-target"
+                disabled={mode === 'focus' && hours === 0 && minutes === 0 && seconds === 0}
               >
                 <Play className="w-5 h-5 mr-2" />
                 Start
               </Button>
             )}
             {isRunning && (
-              <Button size="lg" variant="outline" onClick={handlePause} className="px-8">
+              <Button size="lg" variant="outline" onClick={handlePause} className="px-10 min-h-[52px] tap-target">
                 <Pause className="w-5 h-5 mr-2" />
                 Pause
               </Button>
@@ -402,9 +592,9 @@ export function TimerPage() {
         )}
       </div>
 
-      {/* Tips */}
+      {/* First-use tip */}
       <div className="text-center text-sm text-muted-foreground">
-        <p>💡 Pro tip: Use 25-minute sessions for focused studying</p>
+        <p>💡 Start with a 25-minute focus block, then take a short break.</p>
       </div>
     </div>
   );

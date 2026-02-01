@@ -1,4 +1,4 @@
-import type { StudySession } from '@/types';
+import type { StudySession, CourseDailyCompletion } from '@/types';
 
 /** ISO date string (YYYY-MM-DD). */
 export function toDateKey(iso: string): string {
@@ -63,12 +63,17 @@ export function daysWithSessions(sessions: StudySession[], upToDate: Date): Set<
 /** Current streak: consecutive days (including today) with at least one session. */
 export function currentStreak(sessions: StudySession[], today: Date): number {
   const dateKeys = daysWithSessions(sessions, today);
+  return currentStreakFromDays(dateKeys, today);
+}
+
+/** Current streak from a set of active date keys (YYYY-MM-DD). */
+export function currentStreakFromDays(activeDateKeys: Set<string>, today: Date): number {
   let streak = 0;
   const d = new Date(today);
   d.setHours(0, 0, 0, 0);
   for (let i = 0; i < 365; i++) {
     const key = d.toISOString().slice(0, 10);
-    if (dateKeys.has(key)) {
+    if (activeDateKeys.has(key)) {
       streak++;
       d.setDate(d.getDate() - 1);
     } else {
@@ -76,6 +81,45 @@ export function currentStreak(sessions: StudySession[], today: Date): number {
     }
   }
   return streak;
+}
+
+/** Days with at least one completed course daily task (for combined streak). */
+export function daysWithCompletions(
+  completions: CourseDailyCompletion[],
+  upToDate: Date
+): Set<string> {
+  const set = new Set<string>();
+  if (!Array.isArray(completions)) return set;
+  const cutoff = new Date(upToDate);
+  cutoff.setHours(23, 59, 59, 999);
+  completions.forEach((c) => {
+    if (!c || !c.completed || typeof c.date !== 'string') return;
+    const d = new Date(c.date);
+    if (!isNaN(d.getTime()) && d <= cutoff) set.add(c.date.slice(0, 10));
+  });
+  return set;
+}
+
+/** Combined active days: sessions OR at least one completed course daily task. */
+export function activeDaysFromSessionsAndCompletions(
+  sessions: StudySession[],
+  completions: CourseDailyCompletion[],
+  upToDate: Date
+): Set<string> {
+  const fromSessions = daysWithSessions(sessions, upToDate);
+  const fromCompletions = daysWithCompletions(completions, upToDate);
+  fromCompletions.forEach((k) => fromSessions.add(k));
+  return fromSessions;
+}
+
+/** Current streak from sessions + course daily completions (combined active days). */
+export function currentStreakFromSessionsAndCompletions(
+  sessions: StudySession[],
+  completions: CourseDailyCompletion[],
+  today: Date
+): number {
+  const active = activeDaysFromSessionsAndCompletions(sessions, completions, today);
+  return currentStreakFromDays(active, today);
 }
 
 /** Number of distinct days studied in the week containing the given date. */

@@ -76,8 +76,8 @@ export function AdminApprovalPage() {
             Pending approvals
           </h1>
         </div>
-        <p className="text-muted-foreground">
-          Users below have signed up and are waiting for access. Click Approve to allow them into the dashboard.
+        <p className="text-muted-foreground text-sm">
+          Click Approve to give them dashboard access.
         </p>
 
         {error && (

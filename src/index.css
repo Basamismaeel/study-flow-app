@@ -141,7 +141,11 @@
 
   .task-item {
     @apply flex items-center gap-3 p-3 rounded-lg bg-card border border-border/50 
-           hover:border-primary/30 transition-all duration-200;
+           hover:border-primary/30 transition-all duration-200 min-h-[44px];
+  }
+
+  .tap-target {
+    @apply min-h-[44px] min-w-[44px];
   }
 
   .nav-item {
@@ -209,6 +213,29 @@
       opacity: 1; 
       transform: scale(1); 
     }
+  }
+
+  @keyframes successFlash {
+    0% { background-color: hsl(var(--success) / 0.2); }
+    100% { background-color: transparent; }
+  }
+
+  .animate-success-flash {
+    animation: successFlash 0.6s ease-out;
+  }
+
+  /* Today's tasks card: ring glow when complete */
+  .today-ring-complete {
+    filter: drop-shadow(0 0 8px hsl(var(--primary) / 0.4));
+  }
+
+  .today-ring-pending {
+    animation: todayRingPulse 2.5s ease-in-out infinite;
+  }
+
+  @keyframes todayRingPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.85; }
   }
 
   .text-gradient {

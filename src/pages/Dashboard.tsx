@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserLocalStorage } from '@/hooks/useUserLocalStorage';
 import { StudySessionBlock } from '@/components/StudySessionBlock';
-import { StudyGoalsCard } from '@/components/StudyGoalsCard';
+import { StreakCard } from '@/components/StreakCard';
+import { WeeklyRecapCard } from '@/components/WeeklyRecapCard';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, RadialBarChart, RadialBar, Legend } from 'recharts';
 import {
@@ -510,10 +511,14 @@ export function Dashboard({ systems, selectedNextSystemId, onSelectNextSystem, d
         })}
       />
 
-      {/* Study goals + Today — side by side on large screens */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6 items-start">
-        <StudyGoalsCard subjects={systems.map((s) => ({ id: s.id, name: s.name }))} />
-        <Link to="/daily" className="block min-w-0">
+      {/* Streak & weekly recap */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <StreakCard />
+        <WeeklyRecapCard />
+      </div>
+
+      {/* Today */}
+      <Link to="/daily" className="block max-w-[280px]">
           <div className="relative overflow-hidden rounded-lg border border-amber-200/60 dark:border-amber-900/40 bg-amber-50/80 dark:bg-amber-950/30 shadow-sm hover:shadow-md transition-shadow p-3.5 pr-8 lg:sticky lg:top-6">
             <div className="absolute top-0 right-0 w-8 h-8 bg-amber-200/50 dark:bg-amber-800/30 rounded-bl-lg" aria-hidden />
             <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-800/80 dark:text-amber-200/80 mb-2">Today</p>
@@ -546,7 +551,6 @@ export function Dashboard({ systems, selectedNextSystemId, onSelectNextSystem, d
             </span>
           </div>
         </Link>
-      </div>
 
       {/* Progress Visualization */}
       <div className="glass-card p-6">

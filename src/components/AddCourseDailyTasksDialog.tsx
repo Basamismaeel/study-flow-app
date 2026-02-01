@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Plus, Trash2, ListTodo } from 'lucide-react';
+import { EmptyState } from '@/components/EmptyState';
 import { safeToDateString } from '@/lib/dateUtils';
 
 interface AddCourseDailyTasksDialogProps {
@@ -59,7 +60,7 @@ export function AddCourseDailyTasksDialog({
           </DialogTitle>
         </DialogHeader>
         <p className="text-sm text-muted-foreground -mt-1">
-          Add daily tasks for this course. You can add as many as you like.
+          Add tasks and check them off each day.
         </p>
 
         <form onSubmit={handleAdd} className="flex gap-2">
@@ -76,11 +77,12 @@ export function AddCourseDailyTasksDialog({
 
         <div className="min-h-[120px] max-h-[280px] overflow-y-auto rounded-lg border border-border bg-muted/20">
           {dailyTasks.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
-              <ListTodo className="w-10 h-10 text-muted-foreground/60 mb-2" />
-              <p className="text-sm text-muted-foreground">No tasks yet</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Add tasks above</p>
-            </div>
+            <EmptyState
+              variant="inline"
+              icon={<ListTodo className="w-8 h-8" />}
+              title="No tasks yet"
+              description="Add tasks above."
+            />
           ) : (
             <ul className="divide-y divide-border p-2">
               {dailyTasks.map((task) => {

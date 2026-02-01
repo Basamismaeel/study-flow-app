@@ -23,16 +23,19 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Target, CheckCircle2, Circle, Clock, Trash2, Edit2 } from 'lucide-react';
+import { EmptyState } from '@/components/EmptyState';
+import { Plus, Target, CheckCircle2, Circle, Clock, Trash2, Edit2, Search } from 'lucide-react';
 import { useUserLocalStorage } from '@/hooks/useUserLocalStorage';
 import { cn } from '@/lib/utils';
 import { safeFormat, safeParseDate } from '@/lib/dateUtils';
+import { toast } from 'sonner';
 
 export function GoalsPage() {
   const [goals, setGoals] = useUserLocalStorage<Goal[]>('yearly-goals', []);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -72,45 +75,50 @@ export function GoalsPage() {
     resetForm();
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.name.trim()) return;
 
-    if (editingGoal) {
-      // Update existing goal
-      setGoals((prev) =>
-        prev.map((g) =>
-          g.id === editingGoal.id
-            ? {
-                ...g,
-                name: formData.name.trim(),
-                description: formData.description.trim() || undefined,
-                targetYear: formData.targetYear,
-                status: formData.status,
-                completedAt:
-                  formData.status === 'completed' && g.status !== 'completed'
-                    ? new Date()
-                    : formData.status !== 'completed'
-                    ? undefined
-                    : g.completedAt,
-              }
-            : g
-        )
-      );
-    } else {
-      // Create new goal
-      const newGoal: Goal = {
-        id: crypto.randomUUID(),
-        name: formData.name.trim(),
-        description: formData.description.trim() || undefined,
-        targetYear: formData.targetYear,
-        status: formData.status,
-        createdAt: new Date(),
-        completedAt: formData.status === 'completed' ? new Date() : undefined,
-      };
-      setGoals((prev) => [...prev, newGoal]);
+    try {
+      if (editingGoal) {
+        const promise = setGoals((prev) =>
+          prev.map((g) =>
+            g.id === editingGoal.id
+              ? {
+                  ...g,
+                  name: formData.name.trim(),
+                  description: formData.description.trim() || undefined,
+                  targetYear: formData.targetYear,
+                  status: formData.status,
+                  completedAt:
+                    formData.status === 'completed' && g.status !== 'completed'
+                      ? new Date()
+                      : formData.status !== 'completed'
+                      ? undefined
+                      : g.completedAt,
+                }
+              : g
+          )
+        );
+        if (typeof promise?.then === 'function') await promise;
+      } else {
+        const newGoal: Goal = {
+          id: crypto.randomUUID(),
+          name: formData.name.trim(),
+          description: formData.description.trim() || undefined,
+          targetYear: formData.targetYear,
+          status: formData.status,
+          createdAt: new Date(),
+          completedAt: formData.status === 'completed' ? new Date() : undefined,
+        };
+        const promise = setGoals((prev) => [...prev, newGoal]);
+        if (typeof promise?.then === 'function') await promise;
+      }
+      handleCloseDialog();
+      toast.success(editingGoal ? 'Goal updated' : 'Goal created');
+    } catch (e) {
+      console.error('Failed to save goal:', e);
+      toast.error('Failed to save. Check your connection and try again.');
     }
-
-    handleCloseDialog();
   };
 
   const handleDelete = () => {
@@ -162,18 +170,27 @@ export function GoalsPage() {
     return b.targetYear - a.targetYear;
   });
 
-  const currentGoals = sortedGoals.filter((g) => g.status !== 'completed');
-  const completedGoals = sortedGoals.filter((g) => g.status === 'completed');
+  const searchLower = searchQuery.trim().toLowerCase();
+  const filteredGoals = searchLower
+    ? sortedGoals.filter(
+        (g) =>
+          g.name.toLowerCase().includes(searchLower) ||
+          (g.description ?? '').toLowerCase().includes(searchLower)
+      )
+    : sortedGoals;
+
+  const currentGoals = filteredGoals.filter((g) => g.status !== 'completed');
+  const completedGoals = filteredGoals.filter((g) => g.status === 'completed');
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-semibold text-foreground mb-2 flex items-center gap-2">
+          <h1 className="text-3xl font-semibold text-foreground tracking-tight mb-2 flex items-center gap-2">
             <Target className="w-8 h-8 text-primary" />
             Goals
           </h1>
-          <p className="text-muted-foreground">Track your yearly goals and aspirations</p>
+          <p className="text-muted-foreground">Track yearly goals and mark progress.</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
@@ -272,17 +289,31 @@ export function GoalsPage() {
       </div>
 
       {goals.length === 0 ? (
-        <div className="text-center py-12 border-2 border-dashed border-muted rounded-lg">
-          <Target className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-          <h3 className="text-lg font-medium text-foreground mb-2">No goals yet</h3>
-          <p className="text-muted-foreground mb-4">Start by adding your first yearly goal</p>
-          <Button onClick={() => handleOpenDialog()}>
-            <Plus className="w-4 h-4 mr-2" />
-            Add Your First Goal
-          </Button>
-        </div>
+        <EmptyState
+          variant="card"
+          icon={<Target className="w-7 h-7" />}
+          title="No goals yet"
+          description="Your goals will show here once you add one."
+          action={
+            <Button onClick={() => handleOpenDialog()}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add your first goal
+            </Button>
+          }
+        />
       ) : (
         <div className="space-y-6">
+          <div className="relative max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Input
+              type="search"
+              placeholder="Search goals..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-10"
+              aria-label="Search goals"
+            />
+          </div>
           {currentGoals.length > 0 && (
             <div>
               <h2 className="text-xl font-semibold text-foreground mb-4">Active Goals</h2>
@@ -344,6 +375,9 @@ export function GoalsPage() {
             </div>
           )}
 
+          {currentGoals.length === 0 && completedGoals.length === 0 && searchLower && (
+            <p className="text-sm text-muted-foreground py-4 text-center">No goals match your search.</p>
+          )}
           {completedGoals.length > 0 && (
             <div>
               <h2 className="text-xl font-semibold text-foreground mb-4">Completed Goals</h2>

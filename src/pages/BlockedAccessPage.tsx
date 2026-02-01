@@ -18,13 +18,13 @@ export function BlockedAccessPage() {
           <h1 className="text-xl font-semibold text-foreground">
             Access denied
           </h1>
-          <p className="text-muted-foreground mt-2">
-            Your account could not be verified. Please sign in again or contact support.
+          <p className="text-muted-foreground mt-1 text-sm">
+            Please sign in again.
           </p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <Button variant="outline" asChild>
-            <Link to="/login">Go to sign in</Link>
+        <div className="flex gap-3 justify-center">
+          <Button asChild>
+            <Link to="/login">Sign in</Link>
           </Button>
           <Button variant="ghost" onClick={() => signOut()}>
             Sign out

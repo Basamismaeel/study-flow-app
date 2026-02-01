@@ -4,7 +4,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CreatePlanDialog } from '@/components/CreatePlanDialog';
 import { EditPlanTasksDialog } from '@/components/EditPlanTasksDialog';
 import { PlanCard } from '@/components/PlanCard';
-import { Plus } from 'lucide-react';
+import { EmptyState } from '@/components/EmptyState';
+import { Plus, ClipboardList } from 'lucide-react';
 import { useUserLocalStorage } from '@/hooks/useUserLocalStorage';
 import type { Plan, PlannerTask } from '@/types';
 
@@ -115,13 +116,18 @@ export function PlannerPage() {
       </div>
 
       {plans.length === 0 ? (
-        <div className="glass-card p-12 text-center">
-          <p className="text-muted-foreground mb-4">No plans yet.</p>
-          <Button onClick={() => setCreateDialogOpen(true)} variant="outline">
-            <Plus className="w-4 h-4 mr-2" />
-            Create your first plan
-          </Button>
-        </div>
+        <EmptyState
+          variant="card"
+          icon={<ClipboardList className="w-7 h-7" />}
+          title="No plans yet"
+          description="Your plans will show here once you create one."
+          action={
+            <Button onClick={() => setCreateDialogOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Create your first plan
+            </Button>
+          }
+        />
       ) : (
         <Tabs
           value={activePlanId ?? plans[0].id}

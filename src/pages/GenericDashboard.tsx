@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type MouseEvent } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ChartContainer,
@@ -12,23 +12,27 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { BookOpen, ListTodo, TrendingUp, ArrowRight, ChevronDown } from 'lucide-react';
-import { Subject, DailyTask, CourseDailyCompletion } from '@/types';
+import { BookOpen, ListTodo, TrendingUp, ArrowRight, ChevronDown, Timer, PlusCircle, CheckCircle2, Circle } from 'lucide-react';
+import { Subject, DailyTask, CourseDailyCompletion, StudySession } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { StudySessionBlock } from '@/components/StudySessionBlock';
-import { StudyGoalsCard } from '@/components/StudyGoalsCard';
+import { StreakCard } from '@/components/StreakCard';
+import { WeeklyRecapCard } from '@/components/WeeklyRecapCard';
 import { CourseCard } from '@/components/CourseCard';
 import { AddCourseDailyTasksDialog } from '@/components/AddCourseDailyTasksDialog';
+import { EmptyState } from '@/components/EmptyState';
 
 import { safeToDateString } from '@/lib/dateUtils';
 
 interface GenericDashboardProps {
   subjects: Subject[];
+  sessions: StudySession[];
   courseDailyCompletions: CourseDailyCompletion[];
   dailyTasks: DailyTask[];
   selectedNextSubjectId: string | null;
   onSelectNextSubject: (id: string) => void;
+  onToggleDailyTask: (id: string) => void;
   onAddCourseDailyTask: (courseId: string, text: string) => void;
   onRemoveCourseDailyTask: (courseId: string, taskId: string) => void;
   getCourseDailyCompletion: (taskId: string, date: string) => boolean;
@@ -37,10 +41,12 @@ interface GenericDashboardProps {
 
 export function GenericDashboard({
   subjects,
+  sessions,
   courseDailyCompletions,
   dailyTasks,
   selectedNextSubjectId,
   onSelectNextSubject,
+  onToggleDailyTask,
   onAddCourseDailyTask,
   onRemoveCourseDailyTask,
   getCourseDailyCompletion,
@@ -62,6 +68,39 @@ export function GenericDashboard({
   const dailyTotal = todayDailyTasks.length;
   const dailyPercent =
     dailyTotal > 0 ? Math.round((dailyCompleted / dailyTotal) * 100) : 0;
+  const pendingTasks = todayDailyTasks.filter((t) => !t.completed);
+  const firstPending = pendingTasks[0];
+  const handleToggleFromDashboard = (taskId: string, e: MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onToggleDailyTask(taskId);
+  };
+
+  // Time-of-day greeting and state-based motivational copy
+  const todaysTasksCopy = (() => {
+    const hour = new Date().getHours();
+    const morning = hour >= 5 && hour < 12;
+    const afternoon = hour >= 12 && hour < 17;
+    const greeting = morning ? 'Good morning' : afternoon ? 'Good afternoon' : 'Good evening';
+    if (dailyTotal === 0) {
+      return { title: `${greeting} — your list is empty`, subtitle: 'Add your first task and own the day.' };
+    }
+    if (dailyCompleted === dailyTotal) {
+      const lines = ['You crushed it today.', 'All done. Nice work.', 'List cleared. Time to relax.'];
+      return { title: "Today's list", subtitle: lines[dailyTotal % lines.length] };
+    }
+    const left = dailyTotal - dailyCompleted;
+    if (left === 1) {
+      return { title: "Today's list", subtitle: 'One more to go — you’ve got this.' };
+    }
+    if (dailyPercent >= 75) {
+      return { title: "Today's list", subtitle: `${left} left. Almost there!` };
+    }
+    if (dailyPercent >= 50) {
+      return { title: "Today's list", subtitle: `${left} to go. You’re halfway there.` };
+    }
+    return { title: "Today's list", subtitle: `${left} left. One step at a time.` };
+  })();
 
   // Coverage: only courses WITH daily tasks. Daily coverage = completed today / total.
   const coursesWithDailyTasks = safeSubjects.filter((s) => (s.dailyTasks ?? []).length > 0);
@@ -135,47 +174,163 @@ export function GenericDashboard({
   });
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="space-y-10 animate-fade-in">
+      {/* Hero: one clear next step */}
       <div>
-        <h1 className="text-3xl font-semibold text-foreground mb-2">
+        <h1 className="text-3xl font-semibold text-foreground tracking-tight">
           Overview
         </h1>
-        <p className="text-muted-foreground">
-          Track your progress across courses and daily tasks
+        <p className="text-muted-foreground mt-1">
+          Start a session, check today&apos;s tasks, or open the timer.
         </p>
       </div>
 
-      {/* Start Study Session */}
-      <StudySessionBlock
-        subjects={safeSubjects.map((s) => ({ id: s.id, name: s.name }))}
-        tasks={studySessionTasks}
-      />
-
-      {/* Weekly & subject goals */}
-      <StudyGoalsCard subjects={safeSubjects.map((s) => ({ id: s.id, name: s.name }))} />
-
-      {/* Daily tasks summary */}
-      <div className="glass-card p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <ListTodo className="w-5 h-5 text-primary" />
-            <h2 className="text-lg font-medium text-foreground">
-              Today&apos;s tasks
-            </h2>
-          </div>
-          <Link to="/daily">
-            <Button variant="ghost" size="sm" className="text-primary">
-              View all <ArrowRight className="w-4 h-4 ml-1" />
-            </Button>
-          </Link>
-        </div>
-        <div className="flex items-center gap-4">
-          <Progress value={dailyPercent} className="h-3 flex-1" />
-          <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">
-            {dailyCompleted} / {dailyTotal} completed
-          </span>
-        </div>
+      {/* Quick actions: Start session, Add task, Timer */}
+      <div className="flex flex-wrap items-center gap-3">
+        <StudySessionBlock
+          subjects={safeSubjects.map((s) => ({ id: s.id, name: s.name }))}
+          tasks={studySessionTasks}
+        />
+        <Link to="/daily">
+          <Button variant="outline" size="lg" className="gap-2">
+            <PlusCircle className="w-5 h-5" />
+            Today&apos;s tasks
+          </Button>
+        </Link>
+        <Link to="/timer">
+          <Button variant="outline" size="lg" className="gap-2">
+            <Timer className="w-5 h-5" />
+            Timer
+          </Button>
+        </Link>
       </div>
+
+      {/* Streak & weekly recap */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <StreakCard sessions={sessions ?? []} courseDailyCompletions={safeCompletions} />
+        <WeeklyRecapCard sessions={sessions ?? []} />
+      </div>
+
+      {/* Today's tasks — creative focus card */}
+      <Link to="/daily" className="block group/tasks">
+        <div className="glass-card p-6 hover:border-primary/30 hover:shadow-lg active:scale-[0.99] transition-all duration-200 cursor-pointer rounded-2xl overflow-hidden relative">
+          {/* Subtle gradient when complete */}
+          {dailyTotal > 0 && dailyCompleted === dailyTotal && (
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" aria-hidden />
+          )}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-6 relative">
+            {/* Circular progress with state-based ring effect */}
+            <div className="flex items-center gap-4 shrink-0">
+              <div
+                className={[
+                  'relative h-24 w-24 shrink-0 transition-all duration-300',
+                  dailyTotal > 0 && dailyCompleted === dailyTotal && 'today-ring-complete',
+                  dailyTotal > 0 && pendingTasks.length > 0 && 'today-ring-pending',
+                ].filter(Boolean).join(' ')}
+              >
+                <svg className="h-24 w-24 -rotate-90" viewBox="0 0 36 36">
+                  <path
+                    className="stroke-muted/80"
+                    fill="none"
+                    strokeWidth="2.5"
+                    strokeDasharray="100"
+                    d="M18 2.5 a 15.5 15.5 0 0 1 0 31 a 15.5 15.5 0 0 1 0 -31"
+                  />
+                  <path
+                    className="stroke-primary transition-all duration-700 ease-out"
+                    fill="none"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeDasharray="100"
+                    strokeDashoffset={100 - dailyPercent}
+                    d="M18 2.5 a 15.5 15.5 0 0 1 0 31 a 15.5 15.5 0 0 1 0 -31"
+                  />
+                </svg>
+                <span className="absolute inset-0 flex items-center justify-center text-xl font-bold text-foreground tabular-nums">
+                  {dailyTotal > 0 ? `${dailyPercent}%` : '—'}
+                </span>
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-foreground group-hover/tasks:text-primary transition-colors">
+                  {todaysTasksCopy.title}
+                </h2>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  {todaysTasksCopy.subtitle}
+                </p>
+                {dailyTotal > 0 && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {dailyCompleted} of {dailyTotal} done
+                  </p>
+                )}
+              </div>
+            </div>
+            {/* Task preview: highlight "Next up", then up to 2 more */}
+            <div className="flex-1 min-w-0 space-y-3">
+              {todayDailyTasks.length === 0 && (
+                <div className="flex items-center gap-3 py-2">
+                  <div className="rounded-full bg-muted/80 p-2">
+                    <ListTodo className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Tap here to add your first task and get started.
+                  </p>
+                </div>
+              )}
+              {firstPending && (
+                <div className="flex items-center gap-2 rounded-lg bg-primary/10 border border-primary/20 px-3 py-2">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-primary shrink-0">
+                    Next up
+                  </span>
+                  <span className="text-sm font-medium text-foreground truncate flex-1">
+                    {firstPending.text}
+                  </span>
+                  <button
+                    type="button"
+                    className="shrink-0 text-primary/80 hover:text-primary transition-colors"
+                    aria-label={`Mark "${firstPending.text}" as done`}
+                    onClick={(e) => handleToggleFromDashboard(firstPending.id, e)}
+                  >
+                    <Circle className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+              {todayDailyTasks.length > 0 && todayDailyTasks.filter((t) => t.id !== firstPending?.id).slice(0, 2).map((task) => (
+                <div key={task.id} className="flex items-center gap-2 text-sm">
+                  <button
+                    type="button"
+                    className={task.completed ? 'shrink-0 text-primary' : 'shrink-0 text-muted-foreground hover:text-foreground'}
+                    aria-label={task.completed ? `Mark "${task.text}" as not done` : `Mark "${task.text}" as done`}
+                    onClick={(e) => handleToggleFromDashboard(task.id, e)}
+                  >
+                    {task.completed ? (
+                      <CheckCircle2 className="h-4 w-4" />
+                    ) : (
+                      <Circle className="h-4 w-4" />
+                    )}
+                  </button>
+                  <span className={task.completed ? 'text-muted-foreground line-through truncate' : 'text-foreground truncate'}>
+                    {task.text}
+                  </span>
+                </div>
+              ))}
+              {(() => {
+                const displayedCount = firstPending ? Math.min(3, todayDailyTasks.length) : Math.min(2, todayDailyTasks.length);
+                const moreCount = todayDailyTasks.length - displayedCount;
+                return moreCount > 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    +{moreCount} more on your list
+                  </p>
+                ) : null;
+              })()}
+            </div>
+            <div className="flex items-center shrink-0 sm:pl-2">
+              <span className="text-primary font-medium text-sm inline-flex items-center gap-1.5 group-hover/tasks:gap-2 transition-all">
+                Open list <ArrowRight className="h-4 w-4" />
+              </span>
+            </div>
+          </div>
+        </div>
+      </Link>
 
       {/* Coverage Progress (like Medicine) */}
       <div className="glass-card p-6">
@@ -350,34 +505,33 @@ export function GenericDashboard({
                 <div className="text-sm text-muted-foreground">
                   Courses with daily tasks
                 </div>
-                <div className="text-xs text-muted-foreground mt-1">
-                  Only these appear in coverage
-                </div>
               </div>
             </div>
           </>
         ) : safeSubjects.length > 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-50" />
-            <p className="font-medium text-foreground">No daily tasks yet</p>
-            <p className="text-sm">
-              Add daily tasks to your courses to see coverage here. Open a course and add what you want to finish each day.
-            </p>
-            <Link to="/subjects">
-              <Button className="mt-4">Go to courses</Button>
-            </Link>
-          </div>
+          <EmptyState
+            variant="card"
+            icon={<BookOpen className="w-7 h-7" />}
+            title="No daily tasks yet"
+            description="Add tasks to your courses — your progress will show here."
+            action={
+              <Link to="/subjects">
+                <Button>Go to courses</Button>
+              </Link>
+            }
+          />
         ) : (
-          <div className="text-center py-8 text-muted-foreground">
-            <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-50" />
-            <p className="font-medium text-foreground">No courses yet</p>
-            <p className="text-sm">
-              Add courses and daily tasks to see coverage here
-            </p>
-            <Link to="/subjects">
-              <Button className="mt-4">Add course</Button>
-            </Link>
-          </div>
+          <EmptyState
+            variant="card"
+            icon={<BookOpen className="w-7 h-7" />}
+            title="No courses yet"
+            description="Your first course will show here once you add one."
+            action={
+              <Link to="/subjects">
+                <Button>Add course</Button>
+              </Link>
+            }
+          />
         )}
       </div>
 
@@ -404,8 +558,8 @@ export function GenericDashboard({
                       </h3>
                       <ChevronDown className="w-4 h-4 text-muted-foreground" />
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      Click to change
+                    <p className="text-xs text-muted-foreground">
+                      Change course
                     </p>
                   </div>
                 </button>

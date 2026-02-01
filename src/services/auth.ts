@@ -1,6 +1,7 @@
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  sendPasswordResetEmail,
   type User,
 } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -56,5 +57,29 @@ export async function login(
       return { error: 'Wrong password.' };
     if (err.code === 'auth/invalid-email') return { error: 'Invalid email.' };
     return { error: err.message ?? 'Sign in failed.' };
+  }
+}
+
+/**
+ * Send a password reset email to the given address.
+ * Firebase sends an email with a link to reset the password.
+ */
+export async function resetPassword(
+  email: string
+): Promise<{ ok: true } | { error: string }> {
+  const trimmed = email.trim().toLowerCase();
+  if (!trimmed) return { error: 'Email is required.' };
+
+  try {
+    await sendPasswordResetEmail(auth, trimmed);
+    return { ok: true };
+  } catch (e: unknown) {
+    const err = e as { code?: string; message?: string };
+    if (err.code === 'auth/user-not-found')
+      return { error: 'No account with this email.' };
+    if (err.code === 'auth/invalid-email') return { error: 'Invalid email.' };
+    if (err.code === 'auth/too-many-requests')
+      return { error: 'Too many attempts. Try again later.' };
+    return { error: err.message ?? 'Failed to send reset email.' };
   }
 }

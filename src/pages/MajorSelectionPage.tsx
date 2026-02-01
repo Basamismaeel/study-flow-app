@@ -79,8 +79,8 @@ export function MajorSelectionPage() {
             <BookOpen className="w-6 h-6 text-primary-foreground" />
           </div>
           <h1 className="text-2xl font-semibold text-foreground">Choose your major</h1>
-          <p className="text-muted-foreground mt-1">
-            Select once — your dashboard will be tailored to your field.
+          <p className="text-muted-foreground mt-1 text-sm">
+            Pick one to get started.
           </p>
         </div>
 
@@ -103,9 +103,6 @@ export function MajorSelectionPage() {
                   <Icon className="h-5 w-5 text-muted-foreground" />
                 </span>
                 <span className="font-medium text-foreground">{label}</span>
-                {locked && (
-                  <span className="ml-auto text-xs text-muted-foreground">Dedicated dashboard</span>
-                )}
               </button>
             ))}
 
@@ -123,7 +120,6 @@ export function MajorSelectionPage() {
                 <MoreHorizontal className="h-5 w-5 text-muted-foreground" />
               </span>
               <span className="font-medium text-foreground">Other</span>
-              <span className="ml-auto text-xs text-muted-foreground">Custom major</span>
             </button>
           </div>
 

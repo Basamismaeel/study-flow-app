@@ -21,12 +21,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Trash2, FileText, Edit2, X } from 'lucide-react';
+import { Plus, Trash2, FileText, Edit2, X, Search } from 'lucide-react';
 import { safeFormat, safeParseDate } from '@/lib/dateUtils';
 import { useUserLocalStorage } from '@/hooks/useUserLocalStorage';
 import { RichTextEditor } from '@/components/RichTextEditor';
+import { EmptyState } from '@/components/EmptyState';
 import type { Notebook, NotebookPage } from '@/types';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface NotebooksState {
   notebooks: Notebook[];
@@ -53,9 +55,22 @@ export function NotebookPage() {
   const [pageTitle, setPageTitle] = useState('');
   const [editingNotebookId, setEditingNotebookId] = useState<string | null>(null);
   const [editingPageId, setEditingPageId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const selectedNotebook = state.notebooks.find((n) => n.id === state.selectedNotebookId);
   const selectedPage = selectedNotebook?.pages.find((p) => p.id === state.selectedPageId);
+
+  const searchLower = searchQuery.trim().toLowerCase();
+  const filteredNotebooks = searchLower
+    ? state.notebooks.filter(
+        (n) =>
+          n.name.toLowerCase().includes(searchLower) ||
+          n.pages.some((p) => p.title.toLowerCase().includes(searchLower))
+      )
+    : state.notebooks;
+  const filteredPages = selectedNotebook && searchLower
+    ? selectedNotebook.pages.filter((p) => p.title.toLowerCase().includes(searchLower))
+    : selectedNotebook?.pages ?? [];
 
   const handleAddNotebook = () => {
     if (!notebookName.trim()) return;
@@ -73,6 +88,7 @@ export function NotebookPage() {
     }));
     setNotebookName('');
     setNewNotebookDialogOpen(false);
+    toast.success('Notebook created');
   };
 
   const handleAddPage = () => {
@@ -99,6 +115,7 @@ export function NotebookPage() {
     }));
     setPageTitle('');
     setNewPageDialogOpen(false);
+    toast.success('Page created');
   };
 
   const handleUpdatePageContent = (content: string) => {
@@ -216,6 +233,7 @@ export function NotebookPage() {
     setEditNotebookDialogOpen(false);
     setEditingNotebookId(null);
     setNotebookName('');
+    toast.success('Notebook updated');
   };
 
   const handleSavePageEdit = () => {
@@ -224,17 +242,18 @@ export function NotebookPage() {
     setEditPageDialogOpen(false);
     setEditingPageId(null);
     setPageTitle('');
+    toast.success('Page updated');
   };
 
   return (
     <div className="space-y-8 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-semibold text-foreground mb-2 flex items-center gap-2">
+          <h1 className="text-3xl font-semibold text-foreground tracking-tight mb-2 flex items-center gap-2">
             <FileText className="w-8 h-8 text-primary" />
             Notebook
           </h1>
-          <p className="text-muted-foreground">Organize your notes with multiple notebooks and pages</p>
+          <p className="text-muted-foreground">Notes live in notebooks and pages.</p>
         </div>
         <Button onClick={() => setNewNotebookDialogOpen(true)}>
           <Plus className="w-4 h-4 mr-2" />
@@ -243,23 +262,39 @@ export function NotebookPage() {
       </div>
 
       {state.notebooks.length === 0 ? (
-        <div className="glass-card p-12 text-center">
-          <FileText className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
-          <h3 className="text-lg font-medium text-foreground mb-2">No notebooks yet</h3>
-          <p className="text-muted-foreground mb-4">Create your first notebook to start taking notes</p>
-          <Button onClick={() => setNewNotebookDialogOpen(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Create Notebook
-          </Button>
-        </div>
+        <EmptyState
+          variant="card"
+          icon={<FileText className="w-7 h-7" />}
+          title="No notebooks yet"
+          description="Your notebooks will show here once you create one."
+          action={
+            <Button onClick={() => setNewNotebookDialogOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Create notebook
+            </Button>
+          }
+        />
       ) : (
         <div className="flex gap-6 h-[calc(100vh-300px)] min-h-[600px]">
           {/* Sidebar - Notebooks */}
           <div className="w-64 shrink-0 glass-card p-4 flex flex-col">
+            <div className="mb-2">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                <Input
+                  type="search"
+                  placeholder="Search notebooks & pages..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-8 h-9 text-sm"
+                  aria-label="Search notebooks and pages"
+                />
+              </div>
+            </div>
             <div className="mb-4">
               <h2 className="text-sm font-medium text-muted-foreground mb-2">Notebooks</h2>
               <div className="space-y-1 max-h-[200px] overflow-y-auto">
-                {state.notebooks.map((notebook) => (
+                {filteredNotebooks.map((notebook) => (
                   <div
                     key={notebook.id}
                     className={cn(
@@ -318,12 +353,12 @@ export function NotebookPage() {
                   </Button>
                 </div>
                 <div className="flex-1 overflow-y-auto space-y-1">
-                  {selectedNotebook.pages.length === 0 ? (
+                  {filteredPages.length === 0 ? (
                     <p className="text-xs text-muted-foreground text-center py-4">
-                      No pages yet
+                      {selectedNotebook.pages.length === 0 ? 'No pages yet' : 'No pages match your search.'}
                     </p>
                   ) : (
-                    selectedNotebook.pages.map((page) => (
+                    filteredPages.map((page) => (
                       <div
                         key={page.id}
                         className={cn(

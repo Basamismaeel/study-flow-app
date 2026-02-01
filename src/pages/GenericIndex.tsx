@@ -3,6 +3,7 @@
  */
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useUserLocalStorage } from '@/hooks/useUserLocalStorage';
+import { useStudySessions } from '@/hooks/useStudySessions';
 import { GenericDashboard } from './GenericDashboard';
 import { SubjectsPage } from './SubjectsPage';
 import { SubjectDetailPage } from './SubjectDetailPage';
@@ -35,6 +36,7 @@ function normalizeSubject(s: Subject | Record<string, unknown>): Subject {
 const defaultSubjects: Subject[] = [];
 
 export function GenericIndex() {
+  const { sessions } = useStudySessions();
   const [subjects, setSubjects] = useUserLocalStorage<Subject[]>(
     'generic-subjects',
     defaultSubjects
@@ -142,13 +144,14 @@ export function GenericIndex() {
     return c?.completed ?? false;
   };
 
-  const handleAddDailyTask = (text: string, date?: string) => {
+  const handleAddDailyTask = (text: string, date?: string, time?: string) => {
     const newTask: DailyTask = {
       id: crypto.randomUUID(),
       text,
       completed: false,
       createdAt: new Date(),
       date: date ?? new Date().toISOString().slice(0, 10),
+      ...(time && time.trim() && { time: time.trim() }),
     };
     setDailyTasks((prev) => [newTask, ...(Array.isArray(prev) ? prev : [])]);
   };
@@ -164,10 +167,14 @@ export function GenericIndex() {
     setDailyTasks((prev) => (Array.isArray(prev) ? prev : []).filter((t) => t.id !== id));
   };
 
-  const handleUpdateDailyTask = (id: string, text: string) => {
+  const handleUpdateDailyTask = (id: string, text: string, time?: string) => {
     setDailyTasks((prev) => {
       const list = Array.isArray(prev) ? prev : [];
-      return list.map((t) => (t.id === id ? { ...t, text } : t));
+      return list.map((t) =>
+        t.id === id
+          ? { ...t, text, ...(time !== undefined && { time: time === '' ? undefined : time }) }
+          : t
+      );
     });
   };
 
@@ -180,10 +187,12 @@ export function GenericIndex() {
         element={
           <GenericDashboard
             subjects={normalizedSubjects}
+            sessions={sessions}
             courseDailyCompletions={courseDailyCompletions}
             dailyTasks={dailyTasks}
             selectedNextSubjectId={selectedNextSubjectId}
             onSelectNextSubject={setSelectedNextSubjectId}
+            onToggleDailyTask={handleToggleDailyTask}
             onAddCourseDailyTask={handleAddCourseDailyTask}
             onRemoveCourseDailyTask={handleRemoveCourseDailyTask}
             getCourseDailyCompletion={getCourseDailyCompletion}

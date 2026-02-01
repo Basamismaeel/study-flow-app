@@ -56,3 +56,17 @@ export function safeFormatDate(dateStr: string, formatStr: string, fallback = 'â
   const d = parseISO(dateStr);
   return safeFormat(d, formatStr, fallback);
 }
+
+/**
+ * Format HH:mm (24h) for display, e.g. "14:30" -> "2:30 PM". Returns fallback if invalid.
+ */
+export function formatTimeForDisplay(hhmm: string | undefined, fallback = 'â€”'): string {
+  if (!hhmm || typeof hhmm !== 'string') return fallback;
+  const [h, m] = hhmm.split(':').map(Number);
+  if (Number.isNaN(h) || h < 0 || h > 23) return fallback;
+  const mins = Number.isNaN(m) ? 0 : Math.max(0, Math.min(59, m));
+  if (h === 0) return `12:${mins.toString().padStart(2, '0')} AM`;
+  if (h === 12) return `12:${mins.toString().padStart(2, '0')} PM`;
+  if (h < 12) return `${h}:${mins.toString().padStart(2, '0')} AM`;
+  return `${h - 12}:${mins.toString().padStart(2, '0')} PM`;
+}
