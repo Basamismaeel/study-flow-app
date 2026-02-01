@@ -16,14 +16,13 @@ interface WeeklyRecapCardProps {
 export function WeeklyRecapCard({ sessions: sessionsProp }: WeeklyRecapCardProps) {
   const { sessions: sessionsFromHook } = useStudySessions();
   const sessions = sessionsProp ?? sessionsFromHook ?? [];
-  const today = useMemo(() => new Date(), []);
   const daysThisWeek = useMemo(
-    () => daysStudiedThisWeek(sessions, today),
-    [sessions, today]
+    () => daysStudiedThisWeek(sessions, new Date()),
+    [sessions]
   );
   const minutesThisWeek = useMemo(
-    () => totalMinutesInWeek(sessions, today),
-    [sessions, today]
+    () => totalMinutesInWeek(sessions, new Date()),
+    [sessions]
   );
 
   return (

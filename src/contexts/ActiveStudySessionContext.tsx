@@ -7,7 +7,7 @@ import {
   ReactNode,
 } from 'react';
 import { useUserLocalStorage } from '@/hooks/useUserLocalStorage';
-import { useStudySessions } from '@/hooks/useStudySessions';
+import { useStudySessionsContext } from '@/contexts/StudySessionsContext';
 
 export interface ActiveSessionPayload {
   subjectId: string | null;
@@ -69,7 +69,7 @@ export function ActiveStudySessionProvider({ children }: { children: ReactNode }
   const active = normalizeActive(rawActive);
   const setActive = setRawActive;
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const { addSession } = useStudySessions();
+  const { addSession } = useStudySessionsContext();
 
   useEffect(() => {
     if (!active) {

@@ -58,6 +58,16 @@ export function safeFormatDate(dateStr: string, formatStr: string, fallback = 'â
 }
 
 /**
+ * Local date key (YYYY-MM-DD) from a Date.
+ */
+export function toLocalDateKey(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/**
  * Format HH:mm (24h) for display, e.g. "14:30" -> "2:30 PM". Returns fallback if invalid.
  */
 export function formatTimeForDisplay(hhmm: string | undefined, fallback = 'â€”'): string {

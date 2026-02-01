@@ -8,7 +8,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { safeFormat, safeParseDate } from '@/lib/dateUtils';
+import { safeFormat, safeParseDate, toLocalDateKey } from '@/lib/dateUtils';
 
 interface StudyHeatmapProps {
   sessions: StudySession[];
@@ -43,7 +43,7 @@ export function StudyHeatmap({ sessions, onDayClick }: StudyHeatmapProps) {
       for (let col = 0; col < TOTAL_WEEKS; col++) {
         const d = new Date(start);
         d.setDate(start.getDate() + col * DAYS_PER_WEEK + row);
-        const key = d.toISOString().slice(0, 10);
+        const key = toLocalDateKey(d);
         const minutes = minutesOnDate(sessions, key);
         if (d <= today) keys.add(key);
         grid2D[row].push({ dateKey: key, minutes });
@@ -67,7 +67,7 @@ export function StudyHeatmap({ sessions, onDayClick }: StudyHeatmapProps) {
   }, [sessions]);
 
   const getLevel = (minutes: number, dateKey: string): number => {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = toLocalDateKey(new Date());
     if (dateKey > today) return -1;
     if (minutes <= 0) return 0;
     if (maxMinutes <= 0) return 0;
@@ -119,7 +119,7 @@ export function StudyHeatmap({ sessions, onDayClick }: StudyHeatmapProps) {
                 row.map((cell, colIdx) => {
                   const level = getLevel(cell.minutes, cell.dateKey);
                   const daySessions = byDateKey[cell.dateKey] ?? [];
-                  const isFuture = cell.dateKey > new Date().toISOString().slice(0, 10);
+                  const isFuture = cell.dateKey > toLocalDateKey(new Date());
                   const content = (
                     <button
                       type="button"

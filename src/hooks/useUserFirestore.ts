@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { loadUserData, saveUserData } from '@/services/userData';
 
@@ -30,52 +30,80 @@ function writeToLocalStorage(uid: string, key: string, value: unknown): void {
 
 /**
  * User-scoped persistence: Firestore (users/{uid}/app/data) + localStorage fallback.
- * Saves to BOTH so goals persist when you leave and come back even if Firestore fails.
- * Load: try Firestore first; if empty, use localStorage.
+ * Saves to BOTH so data persists even if Firestore fails.
+ * Uses a ref to avoid stale closure issues.
  */
 export function useUserFirestore<T>(
   key: string,
   initialValue: T
 ): [T, (value: T | ((prev: T) => T)) => void | Promise<void>] {
   const { user } = useAuth();
-  const [stored, setStored] = useState<T>(initialValue);
+  const userId = user?.id;
+  
+  // Initialize from localStorage synchronously for immediate fresh data
+  const getInitialValue = (): T => {
+    if (!userId) return initialValue;
+    return readFromLocalStorage(userId, key, initialValue);
+  };
+  
+  const [stored, setStored] = useState<T>(getInitialValue);
+  
+  // Keep a ref with the latest value to avoid stale closures
+  const storedRef = useRef<T>(stored);
+  storedRef.current = stored;
 
   useEffect(() => {
-    if (!user) {
+    if (!userId) {
       setStored(initialValue);
+      storedRef.current = initialValue;
       return;
     }
-    const lsFallback = readFromLocalStorage(user.id, key, initialValue);
+    // Read fresh from localStorage on every mount
+    const lsFallback = readFromLocalStorage(userId, key, initialValue);
+    setStored(lsFallback);
+    storedRef.current = lsFallback;
 
-    loadUserData(user.id)
+    // Then try Firestore (may have newer data from other devices)
+    loadUserData(userId)
       .then((data) => {
         const raw = data[key];
         if (raw !== undefined && raw !== null) {
           if (Array.isArray(initialValue) && !Array.isArray(raw)) {
-            setStored(lsFallback);
             return;
           }
           setStored(raw as T);
-          return;
+          storedRef.current = raw as T;
         }
-        setStored(lsFallback);
       })
-      .catch(() => setStored(lsFallback));
-  }, [user?.id, key]);
+      .catch(() => {});
+  }, [userId, key]);
 
   const setValue = useCallback(
     (value: T | ((prev: T) => T)): void | Promise<void> => {
-      const next = typeof value === 'function' ? (value as (p: T) => T)(stored) : value;
+      // Always read from localStorage first to get absolute latest
+      const currentFromStorage = userId 
+        ? readFromLocalStorage(userId, key, storedRef.current)
+        : storedRef.current;
+      
+      // Compute next value using the freshest data
+      const next = typeof value === 'function' 
+        ? (value as (p: T) => T)(currentFromStorage) 
+        : value;
+      
+      // Update state and ref
       setStored(next);
+      storedRef.current = next;
 
-      if (user) {
-        writeToLocalStorage(user.id, key, next);
-        return saveUserData(user.id, { [key]: next }).catch((e) => {
+      if (userId) {
+        // Write to localStorage immediately
+        writeToLocalStorage(userId, key, next);
+        // Write to Firestore in background
+        return saveUserData(userId, { [key]: next }).catch((e) => {
           console.error(`useUserFirestore write "${key}":`, e);
         }) as Promise<void>;
       }
     },
-    [user?.id, key, stored]
+    [userId, key]
   );
 
   return [stored, setValue];

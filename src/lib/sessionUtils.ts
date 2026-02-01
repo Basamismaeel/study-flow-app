@@ -1,8 +1,11 @@
 import type { StudySession, CourseDailyCompletion } from '@/types';
+import { toLocalDateKey } from '@/lib/dateUtils';
 
 /** ISO date string (YYYY-MM-DD). */
 export function toDateKey(iso: string): string {
-  return iso.slice(0, 10);
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso.slice(0, 10);
+  return toLocalDateKey(d);
 }
 
 /** Week key e.g. "2025-W29" (ISO week). */
@@ -72,7 +75,7 @@ export function currentStreakFromDays(activeDateKeys: Set<string>, today: Date):
   const d = new Date(today);
   d.setHours(0, 0, 0, 0);
   for (let i = 0; i < 365; i++) {
-    const key = d.toISOString().slice(0, 10);
+    const key = toLocalDateKey(d);
     if (activeDateKeys.has(key)) {
       streak++;
       d.setDate(d.getDate() - 1);
@@ -122,34 +125,54 @@ export function currentStreakFromSessionsAndCompletions(
   return currentStreakFromDays(active, today);
 }
 
+/** Get start of the week (Monday) for a given date, in local time. */
+function getWeekStart(date: Date): Date {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  const day = d.getDay();
+  // Sunday = 0, Monday = 1, etc. We want Monday as start.
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  return d;
+}
+
 /** Number of distinct days studied in the week containing the given date. */
 export function daysStudiedThisWeek(sessions: StudySession[], refDate: Date): number {
   if (!Array.isArray(sessions)) return 0;
-  const weekKey = getWeekKey(refDate);
-  const start = weekKeyToStartDate(weekKey);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 7);
+  
+  const weekStart = getWeekStart(refDate);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 6);
+  
+  const startKey = toLocalDateKey(weekStart);
+  const endKey = toLocalDateKey(weekEnd);
+  
   const set = new Set<string>();
   sessions.forEach((s) => {
     if (!s || typeof s.startTime !== 'string') return;
-    const t = new Date(s.startTime);
-    if (t >= start && t < end) set.add(toDateKey(s.startTime));
+    const key = toDateKey(s.startTime);
+    if (key >= startKey && key <= endKey) set.add(key);
   });
+  
   return set.size;
 }
 
 /** Total minutes in the week containing refDate. */
 export function totalMinutesInWeek(sessions: StudySession[], refDate: Date): number {
   if (!Array.isArray(sessions)) return 0;
-  const weekKey = getWeekKey(refDate);
-  const start = weekKeyToStartDate(weekKey);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 7);
+  
+  const weekStart = getWeekStart(refDate);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 6);
+  
+  const startKey = toLocalDateKey(weekStart);
+  const endKey = toLocalDateKey(weekEnd);
+  
   return sessions
     .filter((s) => s && typeof s.startTime === 'string')
     .filter((s) => {
-      const t = new Date(s.startTime);
-      return t >= start && t < end;
+      const key = toDateKey(s.startTime);
+      return key >= startKey && key <= endKey;
     })
     .reduce((sum, s) => sum + (s.durationMinutes ?? 0), 0);
 }
@@ -184,7 +207,7 @@ export function aggregateByDay(sessions: StudySession[], lastNDays: number): Tim
   const start = new Date(end);
   start.setDate(start.getDate() - lastNDays);
   for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-    const key = d.toISOString().slice(0, 10);
+    const key = toLocalDateKey(d);
     result[key] = minutesOnDate(sessions, key);
   }
   return Object.entries(result)
@@ -192,7 +215,7 @@ export function aggregateByDay(sessions: StudySession[], lastNDays: number): Tim
       key,
       label: key,
       minutes,
-      hours: Math.round((minutes / 60) * 100) / 100,
+      hours: minutes / 60,
     }))
     .sort((a, b) => a.key.localeCompare(b.key));
 }
@@ -212,7 +235,7 @@ export function aggregateByWeek(sessions: StudySession[], lastNWeeks: number): T
       key,
       label: key,
       minutes,
-      hours: Math.round((minutes / 60) * 100) / 100,
+      hours: minutes / 60,
     }))
     .sort((a, b) => a.key.localeCompare(b.key));
 }
@@ -238,7 +261,7 @@ export function aggregateByMonth(sessions: StudySession[], lastNMonths: number):
       key,
       label: key,
       minutes,
-      hours: Math.round((minutes / 60) * 100) / 100,
+      hours: minutes / 60,
     }))
     .sort((a, b) => a.key.localeCompare(b.key));
 }
@@ -256,7 +279,7 @@ export function aggregateByYear(sessions: StudySession[]): TimeBucketItem[] {
       key,
       label: key,
       minutes,
-      hours: Math.round((minutes / 60) * 100) / 100,
+      hours: minutes / 60,
     }))
     .sort((a, b) => a.key.localeCompare(b.key));
 }

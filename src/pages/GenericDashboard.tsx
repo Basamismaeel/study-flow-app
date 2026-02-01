@@ -207,8 +207,8 @@ export function GenericDashboard({
 
       {/* Streak & weekly recap */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-        <StreakCard sessions={sessions ?? []} courseDailyCompletions={safeCompletions} />
-        <WeeklyRecapCard sessions={sessions ?? []} />
+        <StreakCard courseDailyCompletions={safeCompletions} />
+        <WeeklyRecapCard />
       </div>
 
       {/* Today's tasks — creative focus card */}

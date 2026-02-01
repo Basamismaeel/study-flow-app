@@ -59,8 +59,14 @@ export function StudyTimeGraph({ sessions }: StudyTimeGraphProps) {
   const maxHours = useMemo(() => {
     if (data.length === 0) return 1;
     const max = Math.max(...data.map((d) => d.hours));
-    return max < 0.5 ? 1 : Math.ceil(max * 2) / 2;
+    if (max < 1) return 1;
+    return Math.ceil(max * 2) / 2;
   }, [data]);
+
+  const yTicks = useMemo(() => {
+    if (maxHours <= 1) return [0, 0.25, 0.5, 0.75, 1];
+    return undefined;
+  }, [maxHours]);
 
   return (
     <div className="space-y-4">
@@ -105,12 +111,13 @@ export function StudyTimeGraph({ sessions }: StudyTimeGraphProps) {
                     tickLine={false}
                     axisLine={false}
                     domain={[0, maxHours]}
-                    tickFormatter={(v) => `${v}h`}
+                    ticks={yTicks}
+                    tickFormatter={(v) => `${Number(v).toFixed(2).replace(/\.00$/, '')}h`}
                   />
                   <ChartTooltip
                     content={
                       <ChartTooltipContent
-                        formatter={(value) => [`${Number(value).toFixed(1)} h`, 'Studied']}
+                        formatter={(value) => [`${Number(value).toFixed(2)} h`, 'Studied']}
                         labelFormatter={(_, payload) =>
                           payload?.[0]?.payload?.displayLabel ?? ''
                         }

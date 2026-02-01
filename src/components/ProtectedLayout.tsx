@@ -1,5 +1,6 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { StudySessionsProvider } from '@/contexts/StudySessionsContext';
 import { ActiveStudySessionProvider } from '@/contexts/ActiveStudySessionContext';
 import { Layout } from '@/components/Layout';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -30,12 +31,14 @@ export function ProtectedLayout() {
   }
 
   return (
-    <ActiveStudySessionProvider>
-      <Layout>
-        <ErrorBoundary>
-          <Index />
-        </ErrorBoundary>
-      </Layout>
-    </ActiveStudySessionProvider>
+    <StudySessionsProvider>
+      <ActiveStudySessionProvider>
+        <Layout>
+          <ErrorBoundary>
+            <Index />
+          </ErrorBoundary>
+        </Layout>
+      </ActiveStudySessionProvider>
+    </StudySessionsProvider>
   );
 }
