@@ -144,7 +144,7 @@ export function GenericIndex() {
     return c?.completed ?? false;
   };
 
-  const handleAddDailyTask = (text: string, date?: string, timeStart?: string, timeEnd?: string) => {
+  const handleAddDailyTask = (text: string, date?: string, timeStart?: string, timeEnd?: string, repeatEvery?: DailyTask['repeatEvery']) => {
     const newTask: DailyTask = {
       id: crypto.randomUUID(),
       text,
@@ -153,6 +153,7 @@ export function GenericIndex() {
       date: date ?? new Date().toISOString().slice(0, 10),
       ...(timeStart && timeStart.trim() && { timeStart: timeStart.trim() }),
       ...(timeEnd && timeEnd.trim() && { timeEnd: timeEnd.trim() }),
+      ...(repeatEvery && repeatEvery !== 'none' && { repeatEvery }),
     };
     setDailyTasks((prev) => [newTask, ...(Array.isArray(prev) ? prev : [])]);
   };

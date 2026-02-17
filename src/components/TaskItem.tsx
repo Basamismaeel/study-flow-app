@@ -68,15 +68,22 @@ export function TaskItem({ task, onToggle, onDelete, onUpdate }: TaskItemProps) 
             />
           </div>
         ) : (
-          (() => {
-            const timeRange = formatTimeRange(task.timeStart ?? task.time, task.timeEnd);
-            return timeRange ? (
-              <span className="flex items-center gap-1.5 shrink-0 text-sm text-muted-foreground" aria-hidden>
-                <Clock className="w-3.5 h-3.5" />
-                {timeRange}
+          <>
+            {(() => {
+              const timeRange = formatTimeRange(task.timeStart ?? task.time, task.timeEnd);
+              return timeRange ? (
+                <span className="flex items-center gap-1.5 shrink-0 text-sm text-muted-foreground" aria-hidden>
+                  <Clock className="w-3.5 h-3.5" />
+                  {timeRange}
+                </span>
+              ) : null;
+            })()}
+            {task.repeatEvery && task.repeatEvery !== 'none' && (
+              <span className="shrink-0 text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                Repeats {task.repeatEvery === 'daily' ? 'daily' : 'weekly'}
               </span>
-            ) : null;
-          })()
+            )}
+          </>
         )}
       </div>
       <Button

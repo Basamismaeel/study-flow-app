@@ -24,14 +24,21 @@ export async function migrateLocalStorageToFirestore(
       const value = JSON.parse(raw) as unknown;
 
       const suffix = key.slice(PREFIX.length);
-      const parts = suffix.split('-');
-      const maybeUuid = parts[0] ?? '';
-      const isUuid =
-        maybeUuid.length === 8 &&
-        /^[0-9a-f]+$/i.test(maybeUuid);
-      const field = isUuid && parts.length > 1
-        ? parts.slice(1).join('-')
-        : suffix;
+      // User-scoped keys: "user-{uid}-study-sessions" -> field "study-sessions" (app expects this)
+      const userPrefix = `user-${uid}-`;
+      let field: string;
+      if (suffix.startsWith(userPrefix)) {
+        field = suffix.slice(userPrefix.length);
+      } else {
+        const parts = suffix.split('-');
+        const maybeUuid = parts[0] ?? '';
+        const isUuid =
+          maybeUuid.length === 8 &&
+          /^[0-9a-f]+$/i.test(maybeUuid);
+        field = isUuid && parts.length > 1
+          ? parts.slice(1).join('-')
+          : suffix;
+      }
 
       if (payload[field] !== undefined) continue;
       payload[field] = value;

@@ -1,9 +1,10 @@
 import { useMemo, useRef, useState, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, BookOpen, FileQuestion, Target, ChevronDown, Upload, X, Lock, Unlock, Plus, TrendingUp } from 'lucide-react';
+import { ArrowRight, BookOpen, FileQuestion, Target, ChevronDown, Upload, X, Lock, Unlock, Plus, TrendingUp, Calendar, Pencil } from 'lucide-react';
 import { MedicalSystem, DailyTask } from '@/types';
 import { ProgressBar } from '@/components/ProgressBar';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserLocalStorage } from '@/hooks/useUserLocalStorage';
 import { StudySessionBlock } from '@/components/StudySessionBlock';
@@ -37,6 +38,9 @@ export function Dashboard({ systems, selectedNextSystemId, onSelectNextSystem, d
   const [imagePosition, setImagePosition] = useUserLocalStorage<ImagePosition>('dashboard-image-position', { x: 0, y: 0 });
   const [imageSize, setImageSize] = useUserLocalStorage<number>('dashboard-image-size', 200);
   const [imageLocked, setImageLocked] = useUserLocalStorage<boolean>('dashboard-image-locked', false);
+  const [step1ExamDate, setStep1ExamDate] = useUserLocalStorage<string | null>('step1-exam-date', null);
+  const [editingStep1Date, setEditingStep1Date] = useState(false);
+  const [step1DateInput, setStep1DateInput] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageRef = useRef<HTMLDivElement>(null);
   const [imageError, setImageError] = useState(false);
@@ -517,6 +521,53 @@ export function Dashboard({ systems, selectedNextSystemId, onSelectNextSystem, d
         <WeeklyRecapCard />
       </div>
 
+      {/* Step 1 exam countdown */}
+      <div className="glass-card p-6">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-lg font-medium text-foreground flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-primary" />
+            Step 1 Exam
+          </h2>
+          {!editingStep1Date ? (
+            <Button variant="ghost" size="sm" onClick={() => { setEditingStep1Date(true); setStep1DateInput(step1ExamDate || ''); }}>
+              <Pencil className="w-4 h-4" />
+            </Button>
+          ) : null}
+        </div>
+        {editingStep1Date ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              type="date"
+              value={step1DateInput}
+              onChange={(e) => setStep1DateInput(e.target.value)}
+              className="w-[160px]"
+            />
+            <Button size="sm" onClick={() => { const d = step1DateInput.trim() || null; setStep1ExamDate(d); setEditingStep1Date(false); }}>
+              Save
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => { setEditingStep1Date(false); setStep1DateInput(step1ExamDate || ''); }}>
+              Cancel
+            </Button>
+          </div>
+        ) : step1ExamDate ? (
+          (() => {
+            const exam = new Date(step1ExamDate);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            exam.setHours(0, 0, 0, 0);
+            const diffMs = exam.getTime() - today.getTime();
+            const daysLeft = Math.ceil(diffMs / (24 * 60 * 60 * 1000));
+            if (daysLeft < 0) {
+              return <p className="text-muted-foreground">Step 1 was {Math.abs(daysLeft)} day{Math.abs(daysLeft) !== 1 ? 's' : ''} ago.</p>;
+            }
+            if (daysLeft === 0) return <p className="font-semibold text-foreground">Step 1 is today. Good luck!</p>;
+            return <p className="text-2xl font-semibold text-foreground">{daysLeft} day{daysLeft !== 1 ? 's' : ''} until Step 1</p>;
+          })()
+        ) : (
+          <p className="text-muted-foreground text-sm">Set your exam date to see how much time you have left.</p>
+        )}
+      </div>
+
       {/* Today */}
       <Link to="/daily" className="block max-w-[280px]">
           <div className="relative overflow-hidden rounded-lg border border-amber-200/60 dark:border-amber-900/40 bg-amber-50/80 dark:bg-amber-950/30 shadow-sm hover:shadow-md transition-shadow p-3.5 pr-8 lg:sticky lg:top-6">
@@ -739,11 +790,11 @@ export function Dashboard({ systems, selectedNextSystemId, onSelectNextSystem, d
         </div>
       </div>
 
-      {/* Next Up Section */}
+      {/* Current / Next Up Section */}
       {nextSystem && (
         <div className="glass-card p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-medium text-foreground">Next Up</h2>
+            <h2 className="text-lg font-medium text-foreground">Current / Next Up</h2>
             <Link to="/systems">
               <Button variant="ghost" size="sm" className="text-primary">
                 View All <ArrowRight className="w-4 h-4 ml-1" />

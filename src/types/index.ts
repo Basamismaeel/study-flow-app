@@ -34,6 +34,8 @@ export interface DailyTask {
   timeEnd?: string;
   /** Deprecated single time in HH:mm (24h). Use timeStart/timeEnd. */
   time?: string;
+  /** Repeat: show/copy this task every day or every week. */
+  repeatEvery?: 'daily' | 'weekly' | 'none';
 }
 
 export interface ActivityLog {
@@ -48,6 +50,8 @@ export interface PlannerTask {
   id: string;
   name: string;
   completed: boolean;
+  /** When the task was marked complete (ISO string), for track record. */
+  completedAt?: string;
 }
 
 /** A plan with ordered tasks and day-based scheduling. */
@@ -106,6 +110,8 @@ export interface Goal {
   status: 'not-started' | 'in-progress' | 'completed';
   createdAt: Date;
   completedAt?: Date;
+  /** Long-term (e.g. Step 1) vs short-term (e.g. finish block). */
+  goalType?: 'long-term' | 'short-term';
 }
 
 /** A single page in a notebook. */

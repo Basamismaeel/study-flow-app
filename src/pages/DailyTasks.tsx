@@ -23,7 +23,7 @@ import { cn } from '@/lib/utils';
 
 interface DailyTasksProps {
   tasks: DailyTask[];
-  onAddTask: (text: string, date?: string, timeStart?: string, timeEnd?: string) => void;
+  onAddTask: (text: string, date?: string, timeStart?: string, timeEnd?: string, repeatEvery?: DailyTask['repeatEvery']) => void;
   onToggleTask: (id: string) => void;
   onDeleteTask: (id: string) => void;
   onUpdateTask?: (id: string, text: string, timeStart?: string, timeEnd?: string) => void;
@@ -36,6 +36,7 @@ export function DailyTasks({ tasks, onAddTask, onToggleTask, onDeleteTask, onUpd
   const [newTask, setNewTask] = useState('');
   const [newTaskStart, setNewTaskStart] = useState<string>('');
   const [newTaskEnd, setNewTaskEnd] = useState<string>('');
+  const [newTaskRepeat, setNewTaskRepeat] = useState<DailyTask['repeatEvery']>('none');
   const [searchQuery, setSearchQuery] = useState('');
   const today = new Date();
   const todayStr = safeToDateString(today);
@@ -71,10 +72,11 @@ export function DailyTasks({ tasks, onAddTask, onToggleTask, onDeleteTask, onUpd
     if (newTask.trim()) {
       const start = newTaskStart.trim() || undefined;
       const end = newTaskEnd.trim() || undefined;
-      onAddTask(newTask.trim(), allowOtherDays ? viewDate : undefined, start, end);
+      onAddTask(newTask.trim(), allowOtherDays ? viewDate : undefined, start, end, newTaskRepeat !== 'none' ? newTaskRepeat : undefined);
       setNewTask('');
       setNewTaskStart('');
       setNewTaskEnd('');
+      setNewTaskRepeat('none');
       toast.success('Task added');
     }
   };
@@ -198,10 +200,25 @@ export function DailyTasks({ tasks, onAddTask, onToggleTask, onDeleteTask, onUpd
             <Plus className="w-5 h-5" />
           </Button>
         </div>
-        <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-          <Clock className="w-3.5 h-3.5" />
-          Time is optional — add a range to sort and plan your day.
-        </p>
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2">
+            <label htmlFor="new-task-repeat" className="text-xs text-muted-foreground whitespace-nowrap">Repeat</label>
+            <select
+              id="new-task-repeat"
+              value={newTaskRepeat}
+              onChange={(e) => setNewTaskRepeat(e.target.value as DailyTask['repeatEvery'])}
+              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+            >
+              <option value="none">None</option>
+              <option value="daily">Every day</option>
+              <option value="weekly">Every week</option>
+            </select>
+          </div>
+          <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5" />
+            Time is optional — add a range to sort and plan your day.
+          </p>
+        </div>
       </form>
 
       {/* Progress Summary */}

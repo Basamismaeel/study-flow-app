@@ -40,7 +40,7 @@ export function MedicineIndex() {
     if (selectedNextSystemId === id) setSelectedNextSystemId(null);
   };
 
-  const handleAddTask = (text: string, _date?: string, timeStart?: string, timeEnd?: string) => {
+  const handleAddTask = (text: string, _date?: string, timeStart?: string, timeEnd?: string, repeatEvery?: DailyTask['repeatEvery']) => {
     const newTask: DailyTask = {
       id: crypto.randomUUID(),
       text,
@@ -48,6 +48,7 @@ export function MedicineIndex() {
       createdAt: new Date(),
       ...(timeStart && timeStart.trim() && { timeStart: timeStart.trim() }),
       ...(timeEnd && timeEnd.trim() && { timeEnd: timeEnd.trim() }),
+      ...(repeatEvery && repeatEvery !== 'none' && { repeatEvery }),
     };
     setTasks((prev) => [newTask, ...prev]);
   };

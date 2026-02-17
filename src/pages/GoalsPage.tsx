@@ -41,6 +41,7 @@ export function GoalsPage() {
     description: '',
     targetYear: new Date().getFullYear(),
     status: 'not-started' as Goal['status'],
+    goalType: 'short-term' as 'long-term' | 'short-term',
   });
 
   const currentYear = new Date().getFullYear();
@@ -51,6 +52,7 @@ export function GoalsPage() {
       description: '',
       targetYear: currentYear,
       status: 'not-started',
+      goalType: 'short-term',
     });
     setEditingGoal(null);
   };
@@ -63,6 +65,7 @@ export function GoalsPage() {
         description: goal.description || '',
         targetYear: goal.targetYear,
         status: goal.status,
+        goalType: goal.goalType ?? 'short-term',
       });
     } else {
       resetForm();
@@ -89,6 +92,7 @@ export function GoalsPage() {
                   description: formData.description.trim() || undefined,
                   targetYear: formData.targetYear,
                   status: formData.status,
+                  goalType: formData.goalType,
                   completedAt:
                     formData.status === 'completed' && g.status !== 'completed'
                       ? new Date()
@@ -107,6 +111,7 @@ export function GoalsPage() {
           description: formData.description.trim() || undefined,
           targetYear: formData.targetYear,
           status: formData.status,
+          goalType: formData.goalType,
           createdAt: new Date(),
           completedAt: formData.status === 'completed' ? new Date() : undefined,
         };
@@ -179,8 +184,14 @@ export function GoalsPage() {
       )
     : sortedGoals;
 
+  const longTerm = filteredGoals.filter((g) => (g.goalType ?? 'short-term') === 'long-term');
+  const shortTerm = filteredGoals.filter((g) => (g.goalType ?? 'short-term') === 'short-term');
   const currentGoals = filteredGoals.filter((g) => g.status !== 'completed');
   const completedGoals = filteredGoals.filter((g) => g.status === 'completed');
+  const longTermActive = longTerm.filter((g) => g.status !== 'completed');
+  const longTermCompleted = longTerm.filter((g) => g.status === 'completed');
+  const shortTermActive = shortTerm.filter((g) => g.status !== 'completed');
+  const shortTermCompleted = shortTerm.filter((g) => g.status === 'completed');
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
@@ -261,6 +272,20 @@ export function GoalsPage() {
                 />
               </div>
               <div className="space-y-2">
+                <Label htmlFor="goalType">Goal type</Label>
+                <select
+                  id="goalType"
+                  value={formData.goalType}
+                  onChange={(e) =>
+                    setFormData({ ...formData, goalType: e.target.value as 'long-term' | 'short-term' })
+                  }
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                  <option value="short-term">Short-term</option>
+                  <option value="long-term">Long-term</option>
+                </select>
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="status">Status</Label>
                 <select
                   id="status"
@@ -314,11 +339,11 @@ export function GoalsPage() {
               aria-label="Search goals"
             />
           </div>
-          {currentGoals.length > 0 && (
+          {(longTermActive.length > 0 || longTermCompleted.length > 0) && (
             <div>
-              <h2 className="text-xl font-semibold text-foreground mb-4">Active Goals</h2>
+              <h2 className="text-xl font-semibold text-foreground mb-4">Long-term goals</h2>
               <div className="grid gap-4 md:grid-cols-2">
-                {currentGoals.map((goal) => (
+                {longTermActive.map((goal) => (
                   <div
                     key={goal.id}
                     className={cn(
@@ -371,18 +396,7 @@ export function GoalsPage() {
                     </div>
                   </div>
                 ))}
-              </div>
-            </div>
-          )}
-
-          {currentGoals.length === 0 && completedGoals.length === 0 && searchLower && (
-            <p className="text-sm text-muted-foreground py-4 text-center">No goals match your search.</p>
-          )}
-          {completedGoals.length > 0 && (
-            <div>
-              <h2 className="text-xl font-semibold text-foreground mb-4">Completed Goals</h2>
-              <div className="grid gap-4 md:grid-cols-2">
-                {completedGoals.map((goal) => (
+                {longTermCompleted.map((goal) => (
                   <div
                     key={goal.id}
                     className={cn(
@@ -428,6 +442,115 @@ export function GoalsPage() {
                 ))}
               </div>
             </div>
+          )}
+
+          {(shortTermActive.length > 0 || shortTermCompleted.length > 0) && (
+            <div>
+              <h2 className="text-xl font-semibold text-foreground mb-4">Short-term goals</h2>
+              <div className="grid gap-4 md:grid-cols-2">
+                {shortTermActive.map((goal) => (
+                  <div
+                    key={goal.id}
+                    className={cn(
+                      'p-4 rounded-lg border-2 transition-all',
+                      getStatusColor(goal.status)
+                    )}
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-start gap-2 flex-1">
+                        {getStatusIcon(goal.status)}
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-foreground">{goal.name}</h3>
+                          {goal.description && (
+                            <p className="text-sm text-muted-foreground mt-1">{goal.description}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between mt-4">
+                      <span className="text-sm text-muted-foreground">Target: {goal.targetYear}</span>
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={goal.status}
+                          onChange={(e) =>
+                            handleStatusChange(goal.id, e.target.value as Goal['status'])
+                          }
+                          className="text-xs px-2 py-1 rounded border border-input bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          <option value="not-started">Not Started</option>
+                          <option value="in-progress">In Progress</option>
+                          <option value="completed">Completed</option>
+                        </select>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => handleOpenDialog(goal)}
+                        >
+                          <Edit2 className="w-3 h-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive hover:text-destructive"
+                          onClick={() => setDeleteTargetId(goal.id)}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {shortTermCompleted.map((goal) => (
+                  <div
+                    key={goal.id}
+                    className={cn(
+                      'p-4 rounded-lg border-2 transition-all opacity-75',
+                      getStatusColor(goal.status)
+                    )}
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-start gap-2 flex-1">
+                        {getStatusIcon(goal.status)}
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-foreground line-through">{goal.name}</h3>
+                          {goal.description && (
+                            <p className="text-sm text-muted-foreground mt-1">{goal.description}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between mt-4">
+                      <span className="text-sm text-muted-foreground">
+                        Completed: {goal.completedAt ? safeFormat(safeParseDate(goal.completedAt), 'MMM d, yyyy') : 'N/A'}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => handleOpenDialog(goal)}
+                        >
+                          <Edit2 className="w-3 h-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive hover:text-destructive"
+                          onClick={() => setDeleteTargetId(goal.id)}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {currentGoals.length === 0 && completedGoals.length === 0 && searchLower && (
+            <p className="text-sm text-muted-foreground py-4 text-center">No goals match your search.</p>
           )}
         </div>
       )}

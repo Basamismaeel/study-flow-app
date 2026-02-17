@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CreatePlanDialog } from '@/components/CreatePlanDialog';
 import { EditPlanTasksDialog } from '@/components/EditPlanTasksDialog';
+import { EditPlanDialog } from '@/components/EditPlanDialog';
 import { PlanCard } from '@/components/PlanCard';
 import { EmptyState } from '@/components/EmptyState';
 import { Plus, ClipboardList } from 'lucide-react';
@@ -13,9 +14,11 @@ export function PlannerPage() {
   const [plans, setPlans] = useUserLocalStorage<Plan[]>('study-flow-plans', []);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editTasksPlanId, setEditTasksPlanId] = useState<string | null>(null);
+  const [editPlanId, setEditPlanId] = useState<string | null>(null);
   const [activePlanId, setActivePlanId] = useState<string | null>(plans[0]?.id ?? null);
 
   const editTasksPlan = editTasksPlanId ? plans.find((p) => p.id === editTasksPlanId) ?? null : null;
+  const editPlan = editPlanId ? plans.find((p) => p.id === editPlanId) ?? null : null;
 
   const handleAddPlan = (planData: Omit<Plan, 'id'>) => {
     const newPlan: Plan = {
@@ -33,7 +36,9 @@ export function PlannerPage() {
         return {
           ...plan,
           tasks: plan.tasks.map((t) =>
-            t.id === taskId ? { ...t, completed: !t.completed } : t
+            t.id === taskId
+              ? { ...t, completed: !t.completed, completedAt: !t.completed ? new Date().toISOString() : undefined }
+              : t
           ),
         };
       })
@@ -82,6 +87,14 @@ export function PlannerPage() {
     );
   };
 
+  const handleUpdatePlan = (planId: string, updates: { name?: string; totalDays?: number; tasksPerDay?: number }) => {
+    setPlans((prev) =>
+      prev.map((p) =>
+        p.id !== planId ? p : { ...p, ...updates }
+      )
+    );
+    setEditPlanId(null);
+  };
 
   const handleAddTasks = (planId: string, names: string[]) => {
     const newTasks: PlannerTask[] = names
@@ -151,6 +164,7 @@ export function PlannerPage() {
                 plan={plan}
                 onToggleTask={handleToggleTask}
                 onEditTaskList={(planId) => setEditTasksPlanId(planId)}
+                onEditPlan={(planId) => setEditPlanId(planId)}
               />
             </TabsContent>
           ))}
@@ -172,6 +186,13 @@ export function PlannerPage() {
         open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
         onAddPlan={handleAddPlan}
+      />
+
+      <EditPlanDialog
+        open={!!editPlan}
+        onOpenChange={(open) => !open && setEditPlanId(null)}
+        plan={editPlan}
+        onSave={handleUpdatePlan}
       />
     </div>
   );

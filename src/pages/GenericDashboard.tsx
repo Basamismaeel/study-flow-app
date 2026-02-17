@@ -279,7 +279,7 @@ export function GenericDashboard({
               {firstPending && (
                 <div className="flex items-center gap-2 rounded-lg bg-primary/10 border border-primary/20 px-3 py-2">
                   <span className="text-[10px] font-semibold uppercase tracking-wider text-primary shrink-0">
-                    Next up
+                    Current
                   </span>
                   <span className="text-sm font-medium text-foreground truncate flex-1">
                     {firstPending.text}
@@ -539,7 +539,7 @@ export function GenericDashboard({
       {nextSubject && safeSubjects.length > 0 && (
         <div className="glass-card p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-medium text-foreground">Next Up</h2>
+            <h2 className="text-lg font-medium text-foreground">Current / Next Up</h2>
             <Link to="/subjects">
               <Button variant="ghost" size="sm" className="text-primary">
                 View All <ArrowRight className="w-4 h-4 ml-1" />

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useStudySessions } from '@/hooks/useStudySessions';
-import { StudyHeatmap } from '@/components/StudyHeatmap';
+import { StudyHeatmap, type HeatmapRangeMode } from '@/components/StudyHeatmap';
 import { StudyTimeGraph } from '@/components/StudyTimeGraph';
 import {
   Dialog,
@@ -12,9 +12,12 @@ import { StudySession } from '@/types';
 import { safeFormat, safeParseDate } from '@/lib/dateUtils';
 import { formatExactStudyTime } from '@/lib/sessionUtils';
 import { Clock, BookOpen, BarChart3, Flame } from 'lucide-react';
+import { Label } from '@/components/ui/label';
 
 export function ActivityHeatmapPage() {
   const { sessions } = useStudySessions();
+  const [rangeMode, setRangeMode] = useState<HeatmapRangeMode>('full');
+  const [weeksBack, setWeeksBack] = useState(12);
   const [selectedDay, setSelectedDay] = useState<{
     dateKey: string;
     minutes: number;
@@ -44,10 +47,37 @@ export function ActivityHeatmapPage() {
 
       {/* Heatmap */}
       <section className="space-y-3">
-        <h2 className="text-lg font-medium text-foreground">Activity heatmap</h2>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <h2 className="text-lg font-medium text-foreground">Activity heatmap</h2>
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="heatmap-range" className="text-sm text-muted-foreground whitespace-nowrap">Time range</Label>
+              <select
+                id="heatmap-range"
+                value={rangeMode === 'weeks' ? `weeks-${weeksBack}` : rangeMode}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === 'from-first-data' || v === 'full') setRangeMode(v);
+                  else if (v.startsWith('weeks-')) {
+                    setRangeMode('weeks');
+                    setWeeksBack(Math.max(1, parseInt(v.slice(6), 10) || 12));
+                  }
+                }}
+                className="h-9 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="full">Full year (53 weeks)</option>
+                <option value="from-first-data">From first data</option>
+                <option value="weeks-12">Last 12 weeks</option>
+                <option value="weeks-26">Last 26 weeks</option>
+              </select>
+            </div>
+          </div>
+        </div>
         <div className="rounded-lg border border-border bg-card p-4 sm:p-6">
           <StudyHeatmap
             sessions={sessions}
+            rangeMode={rangeMode}
+            weeksBack={weeksBack}
             onDayClick={(dateKey, minutes, daySessions) =>
               setSelectedDay({ dateKey, minutes, daySessions })
             }

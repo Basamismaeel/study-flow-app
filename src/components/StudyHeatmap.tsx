@@ -10,12 +10,18 @@ import {
 import { cn } from '@/lib/utils';
 import { safeFormat, safeParseDate, toLocalDateKey } from '@/lib/dateUtils';
 
+export type HeatmapRangeMode = 'full' | 'from-first-data' | 'weeks';
+
 interface StudyHeatmapProps {
   sessions: StudySession[];
   onDayClick?: (dateKey: string, minutes: number, daySessions: StudySession[]) => void;
+  /** 'full' = last 53 weeks (default); 'from-first-data' = start from first session; 'weeks' = last N weeks */
+  rangeMode?: HeatmapRangeMode;
+  /** When rangeMode is 'weeks', number of weeks to show (e.g. 12, 26). */
+  weeksBack?: number;
 }
 
-const TOTAL_WEEKS = 53;
+const DEFAULT_TOTAL_WEEKS = 53;
 const DAYS_PER_WEEK = 7;
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -28,19 +34,39 @@ function getMaxMinutes(sessions: StudySession[], dateKeys: Set<string>): number 
   return max;
 }
 
-export function StudyHeatmap({ sessions, onDayClick }: StudyHeatmapProps) {
-  const { grid, maxMinutes, startDate, monthLabels } = useMemo(() => {
+export function StudyHeatmap({ sessions, onDayClick, rangeMode = 'full', weeksBack = 12 }: StudyHeatmapProps) {
+  const { grid, maxMinutes, startDate, monthLabels, totalWeeks } = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const start = new Date(today);
-    start.setDate(today.getDate() - (TOTAL_WEEKS - 1) * DAYS_PER_WEEK);
-    start.setDate(start.getDate() - start.getDay());
+    let start = new Date(today);
+    let totalWeeks = DEFAULT_TOTAL_WEEKS;
+
+    if (rangeMode === 'from-first-data' && Array.isArray(sessions) && sessions.length > 0) {
+      const firstDate = sessions.reduce((earliest, s) => {
+        const t = new Date(s.startTime).getTime();
+        return t < earliest ? t : earliest;
+      }, Number.MAX_SAFE_INTEGER);
+      if (firstDate !== Number.MAX_SAFE_INTEGER) {
+        start = new Date(firstDate);
+        start.setHours(0, 0, 0, 0);
+        start.setDate(start.getDate() - start.getDay());
+        const diffMs = today.getTime() - start.getTime();
+        totalWeeks = Math.max(1, Math.ceil(diffMs / (DAYS_PER_WEEK * 24 * 60 * 60 * 1000)));
+      }
+    } else if (rangeMode === 'weeks' && weeksBack > 0) {
+      totalWeeks = Math.min(weeksBack, DEFAULT_TOTAL_WEEKS);
+      start.setDate(today.getDate() - (totalWeeks - 1) * DAYS_PER_WEEK);
+      start.setDate(start.getDate() - start.getDay());
+    } else {
+      start.setDate(today.getDate() - (totalWeeks - 1) * DAYS_PER_WEEK);
+      start.setDate(start.getDate() - start.getDay());
+    }
 
     const keys = new Set<string>();
     const grid2D: { dateKey: string; minutes: number }[][] = [];
     for (let row = 0; row < DAYS_PER_WEEK; row++) {
       grid2D[row] = [];
-      for (let col = 0; col < TOTAL_WEEKS; col++) {
+      for (let col = 0; col < totalWeeks; col++) {
         const d = new Date(start);
         d.setDate(start.getDate() + col * DAYS_PER_WEEK + row);
         const key = toLocalDateKey(d);
@@ -52,7 +78,7 @@ export function StudyHeatmap({ sessions, onDayClick }: StudyHeatmapProps) {
 
     const monthLabels: { col: number; label: string }[] = [];
     let lastMonth = -1;
-    for (let col = 0; col < TOTAL_WEEKS; col++) {
+    for (let col = 0; col < totalWeeks; col++) {
       const d = new Date(start);
       d.setDate(start.getDate() + col * DAYS_PER_WEEK);
       const m = d.getMonth();
@@ -63,8 +89,8 @@ export function StudyHeatmap({ sessions, onDayClick }: StudyHeatmapProps) {
     }
 
     const max = getMaxMinutes(sessions, keys);
-    return { grid: grid2D, maxMinutes: max, monthLabels };
-  }, [sessions]);
+    return { grid: grid2D, maxMinutes: max, startDate: start, monthLabels, totalWeeks };
+  }, [sessions, rangeMode, weeksBack]);
 
   const getLevel = (minutes: number, dateKey: string): number => {
     const today = toLocalDateKey(new Date());
@@ -111,7 +137,7 @@ export function StudyHeatmap({ sessions, onDayClick }: StudyHeatmapProps) {
             <div
               className="grid gap-[3px] shrink-0"
               style={{
-                gridTemplateColumns: `repeat(${TOTAL_WEEKS}, 10px)`,
+                gridTemplateColumns: `repeat(${totalWeeks}, 10px)`,
                 gridTemplateRows: 'repeat(7, 10px)',
               }}
             >
@@ -169,7 +195,7 @@ export function StudyHeatmap({ sessions, onDayClick }: StudyHeatmapProps) {
           {/* Month labels (bottom) - aligned under first week of each month */}
           <div
             className="relative pl-9 h-4 text-[10px] text-muted-foreground"
-            style={{ width: 9 + TOTAL_WEEKS * 10 + (TOTAL_WEEKS - 1) * 3 }}
+            style={{ width: 9 + totalWeeks * 10 + (totalWeeks - 1) * 3 }}
           >
             {monthLabels.map(({ col, label }) => (
               <span

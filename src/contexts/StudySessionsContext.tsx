@@ -49,6 +49,8 @@ export function StudySessionsProvider({ children }: { children: ReactNode }) {
       ...session,
       id: crypto.randomUUID(),
     };
+    
+    // Update via setRawSessions - this will handle BOTH localStorage AND Firestore
     setRawSessions((prev) => {
       const normalized = normalizeSessions(prev);
       return [withId, ...normalized];
